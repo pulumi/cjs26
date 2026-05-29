@@ -9,7 +9,8 @@
         "dev": "astro dev",
         "build": "astro build",
         "preview": "astro preview",
-        "astro": "astro"
+        "astro": "astro",
+        "reset": "rm -rf .wrangler && echo 'Done. Run npm run dev, then visit http://localhost:4321/?edit=1' to re-enter edit mode."
     },
     "dependencies": {
         "@astrojs/cloudflare": "^13.6.0",

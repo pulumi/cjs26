@@ -10,6 +10,7 @@
     "scripts": {
         "build": "npm run build --workspace=app",
         "dev": "npm run dev --workspace=app",
+        "reset": "npm run reset --workspace=app",
         "deploy": "pulumi up",
         "destroy": "pulumi destroy",
         "format": "prettier --write ."

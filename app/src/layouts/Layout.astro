@@ -16,6 +16,13 @@ const ogImage = new URL("/api/og.png", Astro.url).href;
     <head>
         <meta charset="utf-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link
+            rel="preload"
+            as="font"
+            type="font/woff2"
+            href="/fonts/monaspace-neon-regular.woff2"
+            crossorigin
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="generator" content={Astro.generator} />
         <title>{fullTitle}</title>
@@ -31,94 +38,84 @@ const ogImage = new URL("/api/og.png", Astro.url).href;
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
         <style is:global>
+            @font-face {
+                font-family: "Monaspace Neon Var";
+                font-weight: 400;
+                font-style: normal;
+                font-display: swap;
+                src: url("/fonts/monaspace-neon-regular.woff2") format("woff2");
+            }
             :root {
-                color-scheme: light dark;
-                --rule: color-mix(in srgb, currentColor 12%, transparent);
+                color-scheme: dark;
+                /* cjs26 palette */
+                --color-service-black: #1f1b21;
+                --color-violet-400: #a697fc;
+                --rule: var(--color-violet-400);
             }
             * {
                 box-sizing: border-box;
             }
+            /* Author `display` rules on .btn etc. otherwise override the
+               UA `[hidden] { display: none }` and leave hidden elements
+               visible. Force the semantic. */
+            [hidden] {
+                display: none !important;
+            }
             body {
                 font:
-                    16px/1.6 ui-sans-serif,
-                    system-ui,
-                    sans-serif;
-                max-width: 44rem;
-                margin: 0 auto;
-                padding: 2.5rem 1.25rem 4rem;
-            }
-            header {
-                padding-bottom: 1rem;
-                margin-bottom: 2rem;
-            }
-            header nav {
+                    16px/1.5 "Monaspace Neon Var",
+                    ui-monospace,
+                    "SF Mono",
+                    Menlo,
+                    monospace;
+                background: var(--color-service-black);
+                color: var(--color-violet-400);
+                margin: 0;
+                padding: 2.25rem 1.25rem 3rem;
+                min-height: 100vh;
                 display: flex;
-                gap: 1rem;
-                font-size: 0.9rem;
+                flex-direction: column;
+                text-transform: uppercase;
             }
-            header nav a {
-                text-decoration: none;
-                padding: 0.15rem 0.5rem;
-                border-radius: 4px;
-            }
-            header nav a[aria-current="page"] {
-                background: color-mix(in srgb, currentColor 12%, transparent);
-            }
-            h1 {
-                margin: 0 0 0.25rem;
+            main {
+                max-width: 56rem;
+                margin: 0 auto;
+                width: 100%;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
             }
             code,
             kbd {
-                font-family: ui-monospace, monospace;
-                background: color-mix(in srgb, currentColor 8%, transparent);
+                font-family: "Monaspace Neon Var", ui-monospace, monospace;
+                background: color-mix(in srgb, currentColor 12%, transparent);
                 padding: 0.1em 0.35em;
                 border-radius: 4px;
             }
-            dl.facts {
-                display: grid;
-                grid-template-columns: max-content 1fr;
-                gap: 0.35rem 1rem;
-                margin: 1.5rem 0;
+            a {
+                color: inherit;
             }
-            dl.facts dt {
-                opacity: 0.65;
+            button,
+            input,
+            select,
+            textarea {
+                font-family:
+                    "Monaspace Neon Var", ui-monospace, "SF Mono", Menlo,
+                    monospace;
             }
-            .tag {
-                display: inline-block;
-                font-size: 0.75rem;
-                letter-spacing: 0.05em;
+            button {
+                font: inherit;
+                font-family:
+                    "Monaspace Neon Var", ui-monospace, "SF Mono", Menlo,
+                    monospace;
                 text-transform: uppercase;
-                padding: 0.1rem 0.45rem;
-                border-radius: 999px;
-                border: 1px solid var(--rule);
-            }
-            footer {
-                margin-top: 3rem;
-                padding-top: 1rem;
-                border-top: 1px solid var(--rule);
-                font-size: 0.85rem;
-                opacity: 0.7;
+                cursor: pointer;
             }
         </style>
     </head>
     <body>
-        <header>
-            <h1>{title}</h1>
-            {
-                tagline && (
-                    <p style="opacity: 0.75; margin: 0.25rem 0 0">{tagline}</p>
-                )
-            }
-        </header>
         <main>
             <slot />
         </main>
-        <footer>
-            Adapted from <a href="https://github.com/mwpryer/ascii-ify"
-                >ASCII-ify</a
-            > and deployed to Cloudflare with <a href="https://www.pulumi.com"
-                >Pulumi</a
-            >.
-        </footer>
     </body>
 </html>
