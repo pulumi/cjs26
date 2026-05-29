@@ -26,10 +26,15 @@ export const POST: APIRoute = async ({ request, session }) => {
     if (!expected) {
         return jsonError(500, "server-not-configured");
     }
-    if (
-        typeof body.password !== "string" ||
-        !timingSafeEqual(body.password, expected)
-    ) {
+    if (typeof body.password !== "string") {
+        return jsonError(401, "invalid-password");
+    }
+    // In dev the passkey is "dev", but the UI uppercases everything visually,
+    // so users may type "DEV". Accept either by lowercasing in dev only.
+    const submitted = import.meta.env.DEV
+        ? body.password.toLowerCase()
+        : body.password;
+    if (!timingSafeEqual(submitted, expected)) {
         return jsonError(401, "invalid-password");
     }
 
