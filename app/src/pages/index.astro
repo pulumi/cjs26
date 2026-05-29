@@ -16,9 +16,13 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
 <Layout title="Pulumi Cloud Watching Club ID Card">
     <header class="page-header">
         <span class="page-title">Pulumi cloud watching club ID card</span>
-        <button id="auth-toggle" type="button" class="btn btn-outline">
-            {authed ? "Sign Out" : "Edit"}
-        </button>
+        {
+            authed && (
+                <button id="auth-toggle" type="button" class="btn btn-outline">
+                    Sign Out
+                </button>
+            )
+        }
     </header>
 
     <section
@@ -73,14 +77,14 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                     class="photo-capture-controls"
                     hidden
                 >
-                    <button id="toggle-cam" type="button" class="btn btn-solid"
-                        >Open Webcam</button
-                    >
                     <button
                         id="save-photo"
                         type="button"
                         class="btn btn-solid"
                         hidden>Take Photo</button
+                    >
+                    <button id="toggle-cam" type="button" class="btn btn-solid"
+                        >Open Webcam</button
                     >
                 </div>
                 <button
@@ -117,7 +121,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
     </div>
         {
             authed && (
-                <div class="message-block">Congratulations on your membership! Stop by our booth for some special swag!</div>
+                <div class="message-block">Congratulations on your membership! Stop by our booth for some special swag.</div>
             )
         }
 
@@ -128,8 +132,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         {
             isDev ? (
                 <p>
-                    Local dev password: <code>dev</code> (from{" "}
-                    <code>app/wrangler.toml</code>).
+                    Local dev password: <code>dev</code>
                 </p>
             ) : (
                 <p>
@@ -340,15 +343,19 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             transform: translate(-50%, -50%);
             z-index: 2;
         }
+        #replace-photo.photo-btn-center {
+            top: auto;
+            bottom: 0.75rem;
+            transform: translateX(-50%);
+        }
         .photo-capture-controls {
             position: absolute;
-            top: 50%;
+            bottom: 0.75rem;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             z-index: 2;
             display: flex;
             gap: 0.5rem;
-            flex-wrap: wrap;
             justify-content: center;
         }
 
@@ -840,6 +847,14 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             if (authSection) authSection.hidden = true;
         });
 
+        // Backdoor URL for the owner: ?edit=1 reveals the auth form even
+        // though the Edit button is hidden from public viewers.
+        if (!authed && new URLSearchParams(location.search).get("edit") === "1" && authSection) {
+            authSection.hidden = false;
+            authSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            (document.getElementById("password") as HTMLInputElement)?.focus();
+        }
+
         // --- Auth form ---------------------------------------------------------
         const authForm = document.getElementById(
             "auth-form",
@@ -888,7 +903,10 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             captureControls.hidden = false;
             asciiDisplay.hidden = true;
             applyDisplayStyle();
-            if (savePhotoBtn) savePhotoBtn.hidden = true;
+            if (savePhotoBtn) {
+                savePhotoBtn.hidden = true;
+                savePhotoBtn.disabled = false;
+            }
             setCamButtonLabel(false);
         }
 

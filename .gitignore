@@ -1,3 +1,4 @@
 node_modules
 bin
 .context
+pnpm-lock.yaml
