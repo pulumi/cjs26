@@ -81,8 +81,6 @@ pulumi stack output passkey --show-secrets
 
 Click Apply, and off you go.
 
----
-
 ## What's under the hood
 
 The template deploys an Astro app that opens a connection to a local webcam, captures an image, and saves it as ASCII. The repo contents are as follows:
