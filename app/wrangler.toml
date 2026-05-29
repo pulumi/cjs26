@@ -1,0 +1,30 @@
+# Local-dev config for @astrojs/cloudflare's platformProxy. Provides the
+# bindings Astro doesn't auto-declare (PHOTO_STORE, PASSKEY) so that
+# `astro dev` runs the same endpoints production does, against Miniflare's
+# in-memory KV simulator.
+#
+# Production deployment is managed by Pulumi (../index.ts) — this file is
+# NOT used by the build pipeline. The bindings created here exist locally
+# only.
+
+name = "cjs26-pulumi-dev"
+compatibility_date = "2026-04-15"
+compatibility_flags = ["nodejs_compat"]
+
+# KV namespaces. The ids are placeholders — Miniflare keys local storage
+# by binding name, so the literal value of `id` doesn't matter as long as
+# it's a non-empty string.
+[[kv_namespaces]]
+binding = "SESSION"
+id = "session-local"
+
+[[kv_namespaces]]
+binding = "PHOTO_STORE"
+id = "photo-store-local"
+
+# Non-secret values that map to env vars on the Worker. The production
+# PASSKEY comes from the Random provider in ../index.ts; in dev we use a
+# fixed string so you can unlock the UI predictably. Override by creating
+# .dev.vars (gitignored) and putting PASSKEY=... there.
+[vars]
+PASSKEY = "dev"

@@ -1,0 +1,10 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: nodejs
+template:
+  description: A Pulumi program that deploys an Astro app with Cloudflare workers.
+  config:
+    accountID:
+      description: Your Cloudflare account ID. Find it in the Cloudflare dashboard under Workers & Pages → Account details.
+    subdomain:
+      description: Your Cloudflare workers.dev subdomain. Just the name, not the full URL, under Workers & Pages → Subdomain.

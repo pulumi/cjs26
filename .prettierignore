@@ -1,0 +1,6 @@
+node_modules
+bin
+app/dist
+app/.astro
+.context
+package-lock.json

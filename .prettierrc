@@ -1,0 +1,11 @@
+{
+    "tabWidth": 4,
+    "useTabs": false,
+    "singleQuote": false,
+    "semi": true,
+    "plugins": ["prettier-plugin-astro"],
+    "overrides": [
+        { "files": "*.astro", "options": { "parser": "astro" } },
+        { "files": ["*.yaml", "*.yml"], "options": { "tabWidth": 2 } }
+    ]
+}

@@ -1,0 +1,1071 @@
+---
+// SSR — uses the session to decide whether to render the auth form or the
+// capture UI. Whether a photo *exists* is decided client-side after the
+// page fetches /api/photo (KV's list-after-write is eventually consistent).
+export const prerender = false;
+
+import Layout from "../layouts/Layout.astro";
+
+const authed = (await Astro.session?.get<boolean>("authed")) === true;
+// True under `astro dev`, false in the production build. Vite injects it.
+const isDev = import.meta.env.DEV;
+// The exact command the owner runs to read the production password.
+const pulumiCmd = "pulumi stack output passkey --show-secrets";
+---
+
+<Layout title="Some heading" tagline="Some tag ling.">
+    <section id="display" class="card" hidden>
+        <div class="ascii-wrap">
+            <pre id="ascii-display"></pre>
+        </div>
+        <div class="display-actions">
+            <button id="copy-photo" type="button" class="small">Copy</button>
+        </div>
+    </section>
+
+    {
+        authed ? (
+            <section id="controls-card" class="card">
+                <div class="capture-row">
+                    <button id="toggle-cam" type="button">
+                        Open Webcam
+                    </button>
+                    <button id="save-photo" type="button" disabled>
+                        Save Photo
+                    </button>
+                    <span id="status" role="status" aria-live="polite" />
+                    <button id="lock" type="button" class="small lock-btn">
+                        Sign Out
+                    </button>
+                </div>
+                <div id="controls">
+                    <fieldset>
+                        <legend>Color</legend>
+                        <div class="swatches" id="swatches" />
+                    </fieldset>
+                    <label class="slider">
+                        Style
+                        <select id="chars">
+                            <option value="basic">Basic</option>
+                            <option value="detailed">Detailed</option>
+                            <option value="blocks">Blocks</option>
+                        </select>
+                    </label>
+                    <label class="slider">
+                        Contrast{" "}
+                        <span class="val" id="contrast-val">
+                            100
+                        </span>
+                        %
+                        <input
+                            type="range"
+                            id="contrast"
+                            min="0"
+                            max="200"
+                            value="100"
+                        />
+                    </label>
+                    <label class="slider">
+                        Brightness{" "}
+                        <span class="val" id="brightness-val">
+                            0
+                        </span>
+                        <input
+                            type="range"
+                            id="brightness"
+                            min="-100"
+                            max="100"
+                            value="0"
+                        />
+                    </label>
+                    <label class="slider">
+                        Size{" "}
+                        <span class="val" id="size-val">
+                            5
+                        </span>
+                        px
+                        <input
+                            type="range"
+                            id="size"
+                            min="3"
+                            max="14"
+                            value="5"
+                        />
+                    </label>
+                    <div class="actions">
+                        <button type="button" id="reset" class="small">
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            id="clear-photo"
+                            class="small danger"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </section>
+        ) : (
+            <section id="auth" class="card" hidden>
+                <h2>Sign in to capture</h2>
+                {
+                    isDev ? (
+                        <p>
+                            Local dev password: <code>dev</code> (from{" "}
+                            <code>app/wrangler.toml</code>).
+                        </p>
+                    ) : (
+                        <p>
+                            Run the following to get your Pulumi-generated passkey, then paste it below to sign in:
+                        </p>
+                        <div class="copy-block">
+                            <code>{pulumiCmd}</code>
+                            <button
+                                type="button"
+                                id="copy-pulumi-cmd"
+                                class="small"
+                                data-cmd={pulumiCmd}
+                            >
+                                Copy
+                            </button>
+                        </div>
+                    )
+                }
+                <form id="auth-form">
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        autocomplete="off"
+                        required
+                        placeholder="Passkey"
+                    />
+                    <button type="submit">Apply</button>
+                </form>
+                <p id="auth-error" class="error" hidden />
+            </section>
+        )
+    }
+
+    <!-- Hidden machinery -->
+    <video id="video" autoplay playsinline muted hidden></video>
+    <canvas id="work-canvas" hidden></canvas>
+
+    <style>
+        .card {
+            border: 1px solid var(--rule);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .card h2 {
+            margin-top: 0;
+        }
+        .row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 0.5rem 0.9rem;
+            border-radius: 6px;
+            border: 1px solid var(--rule);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        input[type="password"] {
+            padding: 0.5rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid var(--rule);
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            min-width: 14rem;
+            margin-right: 0.5rem;
+        }
+        .error {
+            color: #c00;
+            font-size: 0.9rem;
+        }
+
+        /* ASCII output. font-size, line-height, and color are applied inline
+       via JS (settings.size / settings.color). At 5px font with line-height
+       3px (the default), the 200×105 grid lays out as ~600×315 px → matches
+       the OG's 1200×630 aspect (1.905:1). */
+        .ascii-wrap {
+            background: #000;
+            border-radius: 6px;
+            /* Final fallback only — kicks in if the content somehow exceeds
+               the viewport width even after the card breaks out below. */
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        pre#ascii-display {
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            letter-spacing: 0;
+            margin: 0;
+            padding: 0.6rem;
+            white-space: pre;
+            width: max-content;
+        }
+        /* Let the display card grow with the ASCII at any font size,
+           breaking out of the body's 44rem column when the image gets wide.
+           Margin + transform centers the card on the page rather than on the
+           body column. Capped at viewport width so it never causes a
+           horizontal page scroll. */
+        #display {
+            width: max-content;
+            max-width: calc(100vw - 1.5rem);
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Capture row — top of the unified controls card. */
+        .capture-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .capture-row #status {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-left: 0.5rem;
+        }
+        .lock-btn {
+            margin-left: auto;
+        }
+        .copy-block {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            background: color-mix(in srgb, currentColor 6%, transparent);
+            padding: 0.5rem 0.65rem;
+            border-radius: 6px;
+            margin: 0.5rem 0 1rem;
+            overflow: hidden;
+        }
+        .copy-block code {
+            background: transparent;
+            padding: 0;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow-x: auto;
+            flex: 1;
+        }
+
+        /* Controls strip — tuning row below. */
+        #controls {
+            display: grid;
+            grid-template-columns: auto auto 1fr 1fr 1fr auto;
+            gap: 0.75rem 1rem;
+            align-items: center;
+        }
+        #controls select {
+            font: inherit;
+            padding: 0.25rem 0.4rem;
+            border-radius: 4px;
+            border: 1px solid var(--rule);
+            background: transparent;
+            color: inherit;
+        }
+        /* Copy button sits under the ASCII display itself so non-authed
+           visitors can use it too. */
+        .display-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+        .actions {
+            display: flex;
+            gap: 0.4rem;
+            align-self: end;
+        }
+        #controls fieldset {
+            border: 0;
+            padding: 0;
+            margin: 0;
+        }
+        #controls legend {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            padding: 0;
+            margin-bottom: 0.3rem;
+        }
+        .swatches {
+            display: flex;
+            gap: 0.3rem;
+        }
+        .swatch {
+            width: 1.4rem;
+            height: 1.4rem;
+            border-radius: 4px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            position: relative;
+        }
+        .swatch input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .swatch:has(input:checked) {
+            border-color: currentColor;
+        }
+        .slider {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+        .slider .val {
+            float: right;
+            opacity: 0.6;
+            font-variant-numeric: tabular-nums;
+        }
+        .slider input {
+            width: 100%;
+        }
+        .small {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.6rem;
+        }
+        .danger {
+            color: #c00;
+            border-color: color-mix(in srgb, #c00 40%, var(--rule));
+        }
+        @media (max-width: 36rem) {
+            #controls {
+                grid-template-columns: 1fr 1fr;
+            }
+            .actions {
+                grid-column: 1 / -1;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+
+    <script>
+        import { canvasToAscii, type AsciiOptions } from "../lib/ascii.ts";
+
+        // --- Character ramp presets ---------------------------------------------
+        // Adapted from the ascii-ify upstream:
+        //   - Blocks:   dense full-cell shades (looks like a photo)
+        //   - Detailed: ASCII glyphs (looks like text)
+        //   - Basic:    middle ground — readable ASCII at any size
+        const CHAR_PRESETS = {
+            blocks: "█▓▒░ ",
+            detailed:
+                "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ",
+            basic: "@%#*+=-:. ",
+        } as const;
+        type CharsPreset = keyof typeof CHAR_PRESETS;
+
+        // --- Settings -----------------------------------------------------------
+        const COLORS = [
+            "#FFFFFF",
+            "#33FF00",
+            "#00FFF0",
+            "#FFB000",
+            "#0099FF",
+            "#FF3366",
+            "#FFCC00",
+            "#A020F0",
+        ];
+        // One grid for everything: live preview, saved photo, OG render. Sized
+        // to the OG image aspect (1200×630 ≈ 1.905:1) so the on-page UI, the
+        // stored JPEG, and the OG PNG are all the same shape.
+        const GRID_W = 200;
+        const GRID_H = 105;
+        // OG canvas dimensions (standard og:image).
+        const OG_PX_W = 1200;
+        const OG_PX_H = 630;
+        const TARGET_ASPECT = OG_PX_W / OG_PX_H;
+        const DEFAULT_SETTINGS = {
+            color: "#00FFF0",
+            chars: "blocks" as CharsPreset,
+            contrast: 100,
+            brightness: 0,
+            size: 5,
+        };
+        const STORAGE_KEY = "ascii-settings-v3";
+
+        type Settings = {
+            color: string;
+            chars: CharsPreset;
+            contrast: number;
+            brightness: number;
+            size: number;
+        };
+
+        function loadSettings(): Settings {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+            } catch {}
+            return { ...DEFAULT_SETTINGS };
+        }
+        function persist(s: Settings) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+            } catch {}
+        }
+        let settings: Settings = loadSettings();
+
+        function asciiOptions(gridW: number, gridH: number): AsciiOptions {
+            return {
+                width: gridW,
+                height: gridH,
+                chars: CHAR_PRESETS[settings.chars],
+                contrast: settings.contrast / 100,
+                brightness: settings.brightness / 100,
+            };
+        }
+
+        // Center-crop `src` to `gridW × gridH`'s aspect ratio, draw the crop into
+        // the shared work canvas (scaled up to give the ASCII algorithm enough
+        // pixels to sample), then convert to ASCII text.
+        //
+        // The crop is what makes any webcam aspect ratio fill the output shape
+        // without stretching: a 4:3 cam cropped to 1:1 loses the sides; a 16:9
+        // cam cropped to 1:1 loses more. The 2:1-ish OG crop trims top/bottom.
+        function asciiFromSource(
+            src: CanvasImageSource,
+            srcW: number,
+            srcH: number,
+            gridW: number,
+            gridH: number,
+        ): string {
+            const targetAspect = gridW / gridH;
+            const srcAspect = srcW / srcH;
+            let cropW = srcW,
+                cropH = srcH,
+                cropX = 0,
+                cropY = 0;
+            if (srcAspect > targetAspect) {
+                cropW = Math.round(srcH * targetAspect);
+                cropX = Math.floor((srcW - cropW) / 2);
+            } else if (srcAspect < targetAspect) {
+                cropH = Math.round(srcW / targetAspect);
+                cropY = Math.floor((srcH - cropH) / 2);
+            }
+            // 2× the grid is plenty of source pixels per character cell.
+            const workW = gridW * 2;
+            const workH = gridH * 2;
+            workCanvas.width = workW;
+            workCanvas.height = workH;
+            const ctx = workCanvas.getContext("2d");
+            if (!ctx) throw new Error("No 2D context");
+            ctx.drawImage(src, cropX, cropY, cropW, cropH, 0, 0, workW, workH);
+            return canvasToAscii(workCanvas, asciiOptions(gridW, gridH));
+        }
+
+        async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
+            const bitmap = await createImageBitmap(blob);
+            const c = document.createElement("canvas");
+            c.width = bitmap.width;
+            c.height = bitmap.height;
+            c.getContext("2d")!.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            return c;
+        }
+
+        // --- DOM ----------------------------------------------------------------
+        const asciiDisplay = document.getElementById(
+            "ascii-display",
+        ) as HTMLPreElement;
+        const displaySection = document.getElementById(
+            "display",
+        ) as HTMLElement;
+        const authSection = document.getElementById(
+            "auth",
+        ) as HTMLElement | null;
+        // The auth form is rendered with `hidden` to prevent a flash for
+        // visitors who'll never need it. We unhide it only when:
+        //  - the Sign Out button set sessionStorage show-auth (in-flow), OR
+        //  - the URL carries ?unlock= (legacy alias / bookmarkable entry), OR
+        //  - loadPhoto() comes back 404 (no saved photo at all).
+        const showAuthFlag = sessionStorage.getItem("show-auth") === "1";
+        if (showAuthFlag) sessionStorage.removeItem("show-auth");
+        const showAuthExplicitly =
+            showAuthFlag ||
+            new URLSearchParams(location.search).has("unlock");
+        if (authSection && showAuthExplicitly) authSection.hidden = false;
+        const status = document.getElementById("status");
+        const setStatus = (s: string) => {
+            if (status) status.textContent = s;
+        };
+
+        function applyDisplayStyle() {
+            asciiDisplay.style.color = settings.color;
+            asciiDisplay.style.fontSize = `${settings.size}px`;
+            // Keep cells visually square: monospace char width ≈ 0.6 × fontSize,
+            // so a line-height of 0.6 × fontSize gives a square cell aspect.
+            asciiDisplay.style.lineHeight = `${settings.size * 0.6}px`;
+        }
+        applyDisplayStyle();
+
+        // --- Render state -------------------------------------------------------
+        type Mode = "idle" | "photo" | "live";
+        let mode: Mode = "idle";
+        // The original JPEG (or current video frame) is the source of truth; we
+        // crop differently for the on-page display vs. the OG image.
+        let cachedSourceCanvas: HTMLCanvasElement | null = null;
+        let stream: MediaStream | null = null;
+        let rafId: number | null = null;
+
+        const video = document.getElementById("video") as HTMLVideoElement;
+        const workCanvas = document.getElementById(
+            "work-canvas",
+        ) as HTMLCanvasElement;
+
+        function renderPhotoFromCache() {
+            if (!cachedSourceCanvas) return;
+            asciiDisplay.textContent = asciiFromSource(
+                cachedSourceCanvas,
+                cachedSourceCanvas.width,
+                cachedSourceCanvas.height,
+                GRID_W,
+                GRID_H,
+            );
+        }
+
+        function renderLiveFrame() {
+            if (!stream || !video.videoWidth) return;
+            asciiDisplay.textContent = asciiFromSource(
+                video,
+                video.videoWidth,
+                video.videoHeight,
+                GRID_W,
+                GRID_H,
+            );
+        }
+
+        function liveLoop() {
+            renderLiveFrame();
+            if (mode === "live") rafId = requestAnimationFrame(liveLoop);
+        }
+
+        // --- Load saved photo on first paint -----------------------------------
+        async function loadPhoto(): Promise<void> {
+            const res = await fetch("/api/photo", { cache: "no-store" });
+            if (!res.ok) {
+                // No saved photo → reveal the auth form so a first-time owner
+                // can unlock and capture.
+                if (authSection) authSection.hidden = false;
+                return;
+            }
+            if (mode === "live") return; // don't fight the live feed
+            const blob = await res.blob();
+            cachedSourceCanvas = await blobToCanvas(blob);
+            mode = "photo";
+            displaySection.hidden = false;
+            renderPhotoFromCache();
+            // With a cached photo on hand, Save becomes "re-render OG with
+            // current settings". Only available to authed users (#save-photo
+            // only exists in their DOM).
+            const saveBtn = document.getElementById(
+                "save-photo",
+            ) as HTMLButtonElement | null;
+            if (saveBtn) saveBtn.disabled = false;
+        }
+
+        // Pull any settings the owner persisted last save. We apply them on
+        // top of localStorage so every visitor — including incognito — sees
+        // the photo the way the owner left it.
+        async function loadServerSettings(): Promise<void> {
+            const res = await fetch("/api/settings", { cache: "no-store" });
+            if (!res.ok) return;
+            try {
+                const incoming = (await res.json()) as Partial<Settings>;
+                settings = { ...settings, ...incoming };
+                applyDisplayStyle();
+                syncControlsFromSettings();
+                if (mode === "photo") renderPhotoFromCache();
+            } catch {}
+        }
+
+        // Push current settings to KV. Auth-gated server-side; if the call
+        // 401s it's silently ignored (Save's own status message will fire).
+        async function postSettings(): Promise<void> {
+            await fetch("/api/settings", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    color: settings.color,
+                    chars: settings.chars,
+                    contrast: settings.contrast,
+                    brightness: settings.brightness,
+                    size: settings.size,
+                }),
+            });
+        }
+
+        // Push the current `settings` values into the UI controls (sliders,
+        // swatches, select) so they reflect what the owner saved. No-op when
+        // the controls aren't rendered (non-authed visitor).
+        function syncControlsFromSettings(): void {
+            const contrast = document.getElementById(
+                "contrast",
+            ) as HTMLInputElement | null;
+            if (!contrast) return;
+            const contrastVal = document.getElementById("contrast-val");
+            const brightness = document.getElementById(
+                "brightness",
+            ) as HTMLInputElement | null;
+            const brightnessVal = document.getElementById("brightness-val");
+            const size = document.getElementById(
+                "size",
+            ) as HTMLInputElement | null;
+            const sizeVal = document.getElementById("size-val");
+            const chars = document.getElementById(
+                "chars",
+            ) as HTMLSelectElement | null;
+            if (contrast) contrast.value = String(settings.contrast);
+            if (contrastVal) contrastVal.textContent = String(settings.contrast);
+            if (brightness) brightness.value = String(settings.brightness);
+            if (brightnessVal)
+                brightnessVal.textContent = String(settings.brightness);
+            if (size) size.value = String(settings.size);
+            if (sizeVal) sizeVal.textContent = String(settings.size);
+            if (chars) chars.value = settings.chars;
+            const checked = document.querySelector<HTMLInputElement>(
+                `#swatches input[value="${settings.color}"]`,
+            );
+            if (checked) checked.checked = true;
+        }
+
+        // Kick both off in parallel; loadServerSettings re-renders the photo
+        // if its result arrives after loadPhoto.
+        loadPhoto();
+        loadServerSettings();
+
+        // --- Controls UI --------------------------------------------------------
+        function buildControls() {
+            // The whole controls block is only rendered in the SSR pass when
+            // the visitor is authed. Non-authed visitors still get the saved
+            // photo and the baseline display style, but no tuning UI.
+            const contrast = document.getElementById(
+                "contrast",
+            ) as HTMLInputElement | null;
+            if (!contrast) return;
+
+            const swatchHost = document.getElementById("swatches");
+            if (swatchHost) {
+                swatchHost.innerHTML = COLORS.map(
+                    (c) => `
+          <label class="swatch" style="background:${c}">
+            <input type="radio" name="color" value="${c}" ${c === settings.color ? "checked" : ""}>
+          </label>
+        `,
+                ).join("");
+                swatchHost.addEventListener("change", (e) => {
+                    const t = e.target as HTMLInputElement;
+                    if (t.name !== "color") return;
+                    settings.color = t.value;
+                    persist(settings);
+                    applyDisplayStyle();
+                    setStatus("");
+                });
+            }
+
+            const contrastVal = document.getElementById("contrast-val")!;
+            const brightness = document.getElementById(
+                "brightness",
+            ) as HTMLInputElement;
+            const brightnessVal = document.getElementById("brightness-val")!;
+            const size = document.getElementById("size") as HTMLInputElement;
+            const sizeVal = document.getElementById("size-val")!;
+            const chars = document.getElementById("chars") as HTMLSelectElement;
+            contrast.value = String(settings.contrast);
+            contrastVal.textContent = String(settings.contrast);
+            brightness.value = String(settings.brightness);
+            brightnessVal.textContent = String(settings.brightness);
+            size.value = String(settings.size);
+            sizeVal.textContent = String(settings.size);
+            chars.value = settings.chars;
+
+            const onSlider = () => {
+                settings.contrast = Number(contrast.value);
+                settings.brightness = Number(brightness.value);
+                contrastVal.textContent = String(settings.contrast);
+                brightnessVal.textContent = String(settings.brightness);
+                persist(settings);
+                setStatus("");
+                if (mode === "photo") renderPhotoFromCache();
+                // live mode: the rAF loop picks up settings on the next frame
+            };
+            contrast.addEventListener("input", onSlider);
+            brightness.addEventListener("input", onSlider);
+
+            chars.addEventListener("change", () => {
+                settings.chars = chars.value as CharsPreset;
+                persist(settings);
+                setStatus("");
+                if (mode === "photo") renderPhotoFromCache();
+            });
+
+            // Size only affects display CSS, not the ASCII text itself — no
+            // re-render needed.
+            size.addEventListener("input", () => {
+                settings.size = Number(size.value);
+                sizeVal.textContent = String(settings.size);
+                persist(settings);
+                applyDisplayStyle();
+                setStatus("");
+            });
+
+            document.getElementById("reset")?.addEventListener("click", () => {
+                settings = { ...DEFAULT_SETTINGS };
+                persist(settings);
+                contrast.value = String(settings.contrast);
+                contrastVal.textContent = String(settings.contrast);
+                brightness.value = String(settings.brightness);
+                brightnessVal.textContent = String(settings.brightness);
+                size.value = String(settings.size);
+                sizeVal.textContent = String(settings.size);
+                chars.value = settings.chars;
+                const checked = swatchHost?.querySelector<HTMLInputElement>(
+                    `input[value="${settings.color}"]`,
+                );
+                if (checked) checked.checked = true;
+                applyDisplayStyle();
+                setStatus("");
+                if (mode === "photo") renderPhotoFromCache();
+            });
+
+            // Clear photo — auth-gated server-side; this button only exists
+            // in the DOM when the SSR pass saw an authed session. No confirm:
+            // retaking is easy enough that fat-fingering isn't catastrophic.
+            document
+                .getElementById("clear-photo")
+                ?.addEventListener("click", async () => {
+                    const res = await fetch("/api/photo", { method: "DELETE" });
+                    if (res.ok) {
+                        // Quickest way back to a clean state — the next paint
+                        // will fetch /api/photo, get 404, and the display
+                        // section will stay hidden.
+                        location.reload();
+                    } else {
+                        setStatus(`Delete failed: ${res.status}`);
+                    }
+                });
+        }
+        buildControls();
+
+        // --- Auth form ---------------------------------------------------------
+        const authForm = document.getElementById(
+            "auth-form",
+        ) as HTMLFormElement | null;
+        const authError = document.getElementById("auth-error");
+        authForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (authError) authError.hidden = true;
+            const password = (
+                document.getElementById("password") as HTMLInputElement
+            ).value;
+            const res = await fetch("/api/auth", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+            if (res.ok) {
+                // Clean URL so ?unlock doesn't linger after a successful
+                // auth — the form should stay hidden on subsequent visits.
+                location.href = "/";
+            } else if (authError) {
+                authError.textContent = "Wrong password.";
+                authError.hidden = false;
+            }
+        });
+
+        // --- Sign Out (destroy session and show the auth form) ----------------
+        // Drops the session server-side, then reloads with a sessionStorage
+        // flag so the next paint reveals the form. We don't put it in the
+        // URL — that's the legacy ?unlock alias, still supported below for
+        // anyone bookmarking the unlock entry point.
+        document.getElementById("lock")?.addEventListener("click", async () => {
+            const res = await fetch("/api/auth", { method: "DELETE" });
+            if (res.ok) {
+                sessionStorage.setItem("show-auth", "1");
+                location.reload();
+            }
+        });
+
+        // --- Copy the pulumi command (production auth instructions) -----------
+        const copyPulumiBtn = document.getElementById(
+            "copy-pulumi-cmd",
+        ) as HTMLButtonElement | null;
+        copyPulumiBtn?.addEventListener("click", async () => {
+            const cmd = copyPulumiBtn.dataset.cmd ?? "";
+            const original = copyPulumiBtn.textContent ?? "Copy";
+            try {
+                await navigator.clipboard.writeText(cmd);
+                copyPulumiBtn.textContent = "Copied!";
+            } catch {
+                copyPulumiBtn.textContent = "Copy failed";
+            }
+            setTimeout(() => {
+                copyPulumiBtn.textContent = original;
+            }, 1500);
+        });
+
+        // --- Webcam ------------------------------------------------------------
+        const toggleBtn = document.getElementById(
+            "toggle-cam",
+        ) as HTMLButtonElement | null;
+        const saveBtn = document.getElementById(
+            "save-photo",
+        ) as HTMLButtonElement | null;
+
+        function setCamButtonLabel(open: boolean) {
+            if (toggleBtn)
+                toggleBtn.textContent = open ? "Close Webcam" : "Open Webcam";
+        }
+
+        function closeCam() {
+            if (rafId !== null) cancelAnimationFrame(rafId);
+            rafId = null;
+            stream?.getTracks().forEach((t) => t.stop());
+            stream = null;
+            video.srcObject = null;
+            setCamButtonLabel(false);
+            // Switch back to displaying the saved frame if we have one,
+            // otherwise hide the display section. Save stays enabled when a
+            // cached photo exists so the user can re-save with tweaked
+            // settings (re-renders the OG only).
+            if (cachedSourceCanvas) {
+                mode = "photo";
+                renderPhotoFromCache();
+                if (saveBtn) saveBtn.disabled = false;
+            } else {
+                mode = "idle";
+                displaySection.hidden = true;
+                if (saveBtn) saveBtn.disabled = true;
+            }
+        }
+
+        async function openCam() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 },
+                });
+                video.srcObject = stream;
+                await video.play();
+                mode = "live";
+                displaySection.hidden = false;
+                if (saveBtn) saveBtn.disabled = false;
+                setCamButtonLabel(true);
+                if (rafId !== null) cancelAnimationFrame(rafId);
+                liveLoop();
+                setStatus("Streaming live ASCII…");
+            } catch (err) {
+                setStatus(`Camera error: ${(err as Error).message}`);
+            }
+        }
+
+        toggleBtn?.addEventListener("click", () => {
+            if (stream) closeCam();
+            else openCam();
+        });
+
+        // Render the current ASCII as a 1200×630 PNG suitable for og:image.
+        // The grid is sized to match the canvas aspect (≈200×105), and we
+        // auto-fit the font width to fill the canvas without horizontal padding.
+        async function renderOgPng(
+            asciiText: string,
+            color: string,
+        ): Promise<Blob> {
+            const W = OG_PX_W;
+            const H = OG_PX_H;
+            const lines = asciiText.split("\n");
+            const rowHeight = H / lines.length;
+
+            const c = document.createElement("canvas");
+            c.width = W;
+            c.height = H;
+            const ctx = c.getContext("2d");
+            if (!ctx) throw new Error("No 2D context");
+
+            // Initial font size: ~1.6× row height fits monospace chars naturally.
+            // Then measure the widest line and scale down to fit W exactly.
+            let fontSize = rowHeight * 1.6;
+            const fontFamily = 'ui-monospace, "SF Mono", Menlo, monospace';
+            ctx.font = `${fontSize}px ${fontFamily}`;
+            const widest = lines.reduce(
+                (m, l) => Math.max(m, ctx.measureText(l).width),
+                0,
+            );
+            if (widest > 0 && widest !== W) {
+                fontSize *= W / widest;
+                ctx.font = `${fontSize}px ${fontFamily}`;
+            }
+
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, W, H);
+            ctx.textBaseline = "top";
+            ctx.fillStyle = color;
+
+            const finalWidth = ctx.measureText(lines[0] ?? "").width;
+            const xOffset = Math.max(0, (W - finalWidth) / 2);
+            for (let i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], xOffset, i * rowHeight);
+            }
+            return new Promise((resolve, reject) =>
+                c.toBlob(
+                    (b) =>
+                        b ? resolve(b) : reject(new Error("toBlob failed")),
+                    "image/png",
+                ),
+            );
+        }
+
+        async function postOgFromSource(
+            source: HTMLCanvasElement,
+        ): Promise<void> {
+            const asciiText = asciiFromSource(
+                source,
+                source.width,
+                source.height,
+                GRID_W,
+                GRID_H,
+            );
+            const ogPng = await renderOgPng(asciiText, settings.color);
+            const ogRes = await fetch("/api/photo", {
+                method: "POST",
+                headers: { "content-type": "image/png" },
+                body: ogPng,
+            });
+            if (!ogRes.ok) throw new Error(`OG POST ${ogRes.status}`);
+        }
+
+        saveBtn?.addEventListener("click", async () => {
+            // Two modes:
+            //   live → capture a fresh frame, write a new JPEG, then write the
+            //          OG PNG derived from it.
+            //   photo → re-render the OG from the cached source with current
+            //           settings (color/chars/contrast/brightness). JPEG is
+            //           untouched.
+            if (mode === "live" && stream && video.videoWidth) {
+                saveBtn.disabled = true;
+                setStatus("Saving…");
+
+                // Center-crop the video frame to the target aspect (1200:630)
+                // before encoding. The stored bytes already match the OG shape
+                // and the on-page display — one source of truth.
+                const srcW = video.videoWidth,
+                    srcH = video.videoHeight;
+                const srcAspect = srcW / srcH;
+                let cropW = srcW,
+                    cropH = srcH,
+                    cropX = 0,
+                    cropY = 0;
+                if (srcAspect > TARGET_ASPECT) {
+                    cropW = Math.round(srcH * TARGET_ASPECT);
+                    cropX = Math.floor((srcW - cropW) / 2);
+                } else if (srcAspect < TARGET_ASPECT) {
+                    cropH = Math.round(srcW / TARGET_ASPECT);
+                    cropY = Math.floor((srcH - cropH) / 2);
+                }
+                const c = document.createElement("canvas");
+                c.width = cropW;
+                c.height = cropH;
+                c.getContext("2d")?.drawImage(
+                    video,
+                    cropX,
+                    cropY,
+                    cropW,
+                    cropH,
+                    0,
+                    0,
+                    cropW,
+                    cropH,
+                );
+                const jpeg: Blob = await new Promise((resolve, reject) =>
+                    c.toBlob(
+                        (b) =>
+                            b ? resolve(b) : reject(new Error("toBlob failed")),
+                        "image/jpeg",
+                        0.85,
+                    ),
+                );
+
+                const jpegRes = await fetch("/api/photo", {
+                    method: "POST",
+                    headers: { "content-type": "image/jpeg" },
+                    body: jpeg,
+                });
+                if (!jpegRes.ok) {
+                    setStatus(`Save failed: ${jpegRes.status}`);
+                    if (saveBtn) saveBtn.disabled = false;
+                    return;
+                }
+
+                cachedSourceCanvas = await blobToCanvas(jpeg);
+
+                try {
+                    setStatus("Rendering OG…");
+                    await postOgFromSource(cachedSourceCanvas);
+                    await postSettings();
+                } catch (err) {
+                    setStatus(
+                        `Photo saved; OG failed: ${(err as Error).message}`,
+                    );
+                }
+
+                // Close the live feed and switch to displaying the saved frame.
+                closeCam();
+                setStatus("Saved.");
+                return;
+            }
+
+            // Photo mode: re-render OG and persist settings. JPEG untouched.
+            if (mode === "photo" && cachedSourceCanvas) {
+                saveBtn.disabled = true;
+                setStatus("Saving…");
+                try {
+                    await postOgFromSource(cachedSourceCanvas);
+                    await postSettings();
+                    setStatus("Saved.");
+                } catch (err) {
+                    setStatus(`Save failed: ${(err as Error).message}`);
+                }
+                saveBtn.disabled = false;
+                return;
+            }
+        });
+
+        // --- Copy ASCII to clipboard ------------------------------------------
+        // Lives in the display section, so it's available to non-authed
+        // visitors too. They have no #status element, so we flash the button
+        // label for feedback instead.
+        const copyBtn = document.getElementById(
+            "copy-photo",
+        ) as HTMLButtonElement | null;
+        copyBtn?.addEventListener("click", async () => {
+            const text = asciiDisplay.textContent ?? "";
+            if (!text) return;
+            const original = copyBtn.textContent ?? "Copy";
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = "Copied!";
+                setStatus("Copied to clipboard.");
+            } catch (err) {
+                copyBtn.textContent = "Copy failed";
+                setStatus(`Copy failed: ${(err as Error).message}`);
+            }
+            setTimeout(() => {
+                copyBtn.textContent = original;
+            }, 1500);
+        });
+    </script>
+</Layout>

@@ -1,0 +1,28 @@
+{
+    "name": "cjs26-pulumi",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Pulumi program that deploys ./app to Cloudflare Workers.",
+    "main": "index.ts",
+    "workspaces": [
+        "app"
+    ],
+    "scripts": {
+        "build": "npm run build --workspace=app",
+        "dev": "npm run dev --workspace=app",
+        "deploy": "pulumi up",
+        "destroy": "pulumi destroy",
+        "format": "prettier --write ."
+    },
+    "dependencies": {
+        "@pulumi/cloudflare": "^6.17.0",
+        "@pulumi/pulumi": "^3.244.0",
+        "@pulumi/random": "^4.20.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.19.19",
+        "prettier": "^3.4.2",
+        "prettier-plugin-astro": "^0.14.1",
+        "typescript": "^5.9.3"
+    }
+}
