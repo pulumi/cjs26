@@ -13,245 +13,463 @@ const isDev = import.meta.env.DEV;
 const pulumiCmd = "pulumi stack output passkey --show-secrets";
 ---
 
-<Layout title="Some heading" tagline="Some tag ling.">
-    <section id="display" class="card" hidden>
-        <div class="ascii-wrap">
-            <pre id="ascii-display"></pre>
+<Layout title="Pulumi Cloud Watching Club ID Card">
+    <header class="page-header">
+        <span class="page-title">Pulumi cloud watching club ID card</span>
+        <button id="auth-toggle" type="button" class="btn btn-outline">
+            {authed ? "Sign Out" : "Edit"}
+        </button>
+    </header>
+
+    <section
+        id="card"
+        class="card"
+        data-photo-phase="empty"
+        data-authed={authed ? "1" : "0"}
+    >
+        <div class="card-left">
+            <img
+                src="/badge.svg"
+                alt="Pulumi Cloud Watching Club — Official Member"
+                class="badge"
+            />
         </div>
-        <div class="display-actions">
-            <button id="copy-photo" type="button" class="small">Copy</button>
+        <div class="card-right">
+            <div class="field field-name">
+                <span class="field-label">Name</span>
+                <span
+                    id="name-value"
+                    class="field-value"
+                    spellcheck="false"
+                    contenteditable={authed ? "plaintext-only" : "false"}
+                >Cloud Watcher</span>
+                {
+                    authed && (
+                        <button
+                            id="save-changes"
+                            type="button"
+                            class="btn btn-solid btn-small"
+                            hidden
+                        >
+                            Save Changes
+                        </button>
+                    )
+                }
+            </div>
+            <div class="field field-exp">
+                <span class="field-label">EXP</span>
+                <span id="exp-value" class="field-value">––/––/––––</span>
+            </div>
+            <div class="photo-cell" id="photo-cell">
+                <pre id="ascii-display" hidden></pre>
+                <button
+                    id="add-photo"
+                    type="button"
+                    class="btn btn-solid photo-btn-center"
+                    hidden={!authed}>Add Photo</button
+                >
+                <div
+                    id="photo-capture-controls"
+                    class="photo-capture-controls"
+                    hidden
+                >
+                    <button id="toggle-cam" type="button" class="btn btn-solid"
+                        >Open Webcam</button
+                    >
+                    <button
+                        id="save-photo"
+                        type="button"
+                        class="btn btn-solid"
+                        hidden>Take Photo</button
+                    >
+                </div>
+                <button
+                    id="replace-photo"
+                    type="button"
+                    class="btn btn-solid photo-btn-center"
+                    >Replace Photo</button
+                >
+            </div>
         </div>
     </section>
 
-    {
-        authed ? (
-            <section id="controls-card" class="card">
-                <div class="capture-row">
-                    <button id="toggle-cam" type="button">
-                        Open Webcam
-                    </button>
-                    <button id="save-photo" type="button" disabled>
-                        Save Photo
-                    </button>
-                    <span id="status" role="status" aria-live="polite" />
-                    <button id="lock" type="button" class="small lock-btn">
-                        Sign Out
+    <div class="card-footer">
+        {
+            authed ? (
+                <a href="https://www.pulumi.com/cjs26" target="_blank" class="laptop-password">
+                    Forest laptop password: W4TCHTHECL0UDS
+                </a>
+            ) : (
+                <span />
+            )
+        }
+        <div class="card-footer-actions">
+            <button id="download" type="button" class="btn btn-outline"
+                >Download</button
+            >
+            <a
+                href="https://discord.gg/kkYR86GM29"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-solid">Share in Discord</a
+            >
+        </div>
+    </div>
+        {
+            authed && (
+                <div class="message-block">Congratulations on your membership! Stop by our booth for some special swag!</div>
+            )
+        }
+
+    <span id="status" class="status" role="status" aria-live="polite"></span>
+
+    <section id="auth" class="auth-card" hidden>
+        <h2>Authenticate to edit</h2>
+        {
+            isDev ? (
+                <p>
+                    Local dev password: <code>dev</code> (from{" "}
+                    <code>app/wrangler.toml</code>).
+                </p>
+            ) : (
+                <p>
+                    Run the following to get your Pulumi-generated passkey,
+                    then paste it below to sign in:
+                </p>
+                <div class="copy-block">
+                    <code>{pulumiCmd}</code>
+                    <button
+                        type="button"
+                        id="copy-pulumi-cmd"
+                        class="btn btn-outline btn-small"
+                        data-cmd={pulumiCmd}
+                    >
+                        Copy
                     </button>
                 </div>
-                <div id="controls">
-                    <fieldset>
-                        <legend>Color</legend>
-                        <div class="swatches" id="swatches" />
-                    </fieldset>
-                    <label class="slider">
-                        Style
-                        <select id="chars">
-                            <option value="basic">Basic</option>
-                            <option value="detailed">Detailed</option>
-                            <option value="blocks">Blocks</option>
-                        </select>
-                    </label>
-                    <label class="slider">
-                        Contrast{" "}
-                        <span class="val" id="contrast-val">
-                            100
-                        </span>
-                        %
-                        <input
-                            type="range"
-                            id="contrast"
-                            min="0"
-                            max="200"
-                            value="100"
-                        />
-                    </label>
-                    <label class="slider">
-                        Brightness{" "}
-                        <span class="val" id="brightness-val">
-                            0
-                        </span>
-                        <input
-                            type="range"
-                            id="brightness"
-                            min="-100"
-                            max="100"
-                            value="0"
-                        />
-                    </label>
-                    <label class="slider">
-                        Size{" "}
-                        <span class="val" id="size-val">
-                            5
-                        </span>
-                        px
-                        <input
-                            type="range"
-                            id="size"
-                            min="3"
-                            max="14"
-                            value="5"
-                        />
-                    </label>
-                    <div class="actions">
-                        <button type="button" id="reset" class="small">
-                            Reset
-                        </button>
-                        <button
-                            type="button"
-                            id="clear-photo"
-                            class="small danger"
-                        >
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            </section>
-        ) : (
-            <section id="auth" class="card" hidden>
-                <h2>Sign in to capture</h2>
-                {
-                    isDev ? (
-                        <p>
-                            Local dev password: <code>dev</code> (from{" "}
-                            <code>app/wrangler.toml</code>).
-                        </p>
-                    ) : (
-                        <p>
-                            Run the following to get your Pulumi-generated passkey, then paste it below to sign in:
-                        </p>
-                        <div class="copy-block">
-                            <code>{pulumiCmd}</code>
-                            <button
-                                type="button"
-                                id="copy-pulumi-cmd"
-                                class="small"
-                                data-cmd={pulumiCmd}
-                            >
-                                Copy
-                            </button>
-                        </div>
-                    )
-                }
-                <form id="auth-form">
-                    <input
-                        id="password"
-                        type="password"
-                        name="password"
-                        autocomplete="off"
-                        required
-                        placeholder="Passkey"
-                    />
-                    <button type="submit">Apply</button>
-                </form>
-                <p id="auth-error" class="error" hidden />
-            </section>
-        )
-    }
+            )
+        }
+        <form id="auth-form">
+            <input
+                id="password"
+                type="password"
+                name="password"
+                autocomplete="off"
+                required
+                placeholder="Passkey"
+            />
+            <button type="submit" class="btn btn-solid">Log In</button>
+            <button
+                type="button"
+                id="auth-cancel"
+                class="btn btn-outline">Cancel</button
+            >
+        </form>
+        <p id="auth-error" class="error" hidden></p>
+    </section>
+
+    <p class="page-footer">
+        Adapted from <a href="https://github.com/mwpryer/ascii-ify" target="_blank"
+            >ASCII-ify</a
+        > and deployed to Cloudflare with <a href="https://www.pulumi.com" target="_blank"
+            >Pulumi</a
+        >.
+    </p>
 
     <!-- Hidden machinery -->
     <video id="video" autoplay playsinline muted hidden></video>
     <canvas id="work-canvas" hidden></canvas>
 
     <style>
-        .card {
-            border: 1px solid var(--rule);
-            border-radius: 8px;
-            padding: 1.25rem;
-            margin: 1.25rem 0;
-        }
-        .card h2 {
-            margin-top: 0;
-        }
-        .row {
+        /* ---- Layout shell ------------------------------------------------- */
+        .page-header {
             display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0 0.25rem;
+            margin-bottom: 1.5rem;
         }
-        button {
-            padding: 0.5rem 0.9rem;
-            border-radius: 6px;
-            border: 1px solid var(--rule);
-            background: transparent;
-            color: inherit;
+        .page-title {
+            font-size: 1rem;
+            letter-spacing: 0;
+        }
+        .page-footer {
+            margin-top: auto;
+            padding-top: 4rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        .page-footer a {
+            text-decoration: underline;
+        }
+
+        /* ---- Buttons ------------------------------------------------------ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            white-space:nowrap;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family:
+                "Monaspace Neon Var", ui-monospace, "SF Mono", Menlo,
+                monospace;
+            font-size: 1rem;
+            line-height: 1.5;
+            text-transform: uppercase;
+            text-decoration: none;
             cursor: pointer;
-            font: inherit;
+            transition: opacity 0.15s ease;
         }
-        button:disabled {
+        .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        input[type="password"] {
-            padding: 0.5rem 0.6rem;
-            border-radius: 6px;
-            border: 1px solid var(--rule);
-            background: transparent;
-            color: inherit;
-            font: inherit;
-            min-width: 14rem;
-            margin-right: 0.5rem;
+        .btn-outline {
+            background: var(--color-service-black);
+            border: 2px solid var(--color-violet-400);
+            color: var(--color-violet-400);
         }
-        .error {
-            color: #c00;
-            font-size: 0.9rem;
+        .btn-solid {
+            background: var(--color-violet-400);
+            border: 2px solid var(--color-violet-400);
+            color: var(--color-service-black);
+        }
+        .btn-small {
+            min-height: 28px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.85rem;
+        }
+        .btn:not(:disabled):hover {
+            opacity: 0.85;
         }
 
-        /* ASCII output. font-size, line-height, and color are applied inline
-       via JS (settings.size / settings.color). At 5px font with line-height
-       3px (the default), the 200×105 grid lays out as ~600×315 px → matches
-       the OG's 1200×630 aspect (1.905:1). */
-        .ascii-wrap {
-            background: #000;
-            border-radius: 6px;
-            /* Final fallback only — kicks in if the content somehow exceeds
-               the viewport width even after the card breaks out below. */
-            overflow-x: auto;
-            max-width: 100%;
+        /* ---- Card --------------------------------------------------------- */
+        .card {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border: 4px solid var(--color-violet-400);
+            /* Match 1200×630 so the live card and the og:image PNG share an
+               aspect. Combined with the field/photo flex ratios below, the
+               photo region also matches the OG canvas. */
+            aspect-ratio: 1200 / 630;
+            border-radius: 16px;
+            overflow: hidden;
         }
-        pre#ascii-display {
-            font-family: ui-monospace, "SF Mono", Menlo, monospace;
-            letter-spacing: 0;
+        .card-left {
+            border-right: 2px solid var(--color-violet-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            background-image: url("/wave-bg.svg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .badge {
+            width: auto;
+            height: auto;
+            max-width: min(100%, 280px);
+            max-height: 100%;
+            display: block;
+        }
+        .card-right {
+            display: flex;
+            flex-direction: column;
+        }
+        .field {
+            border-bottom: 2px solid var(--color-violet-400);
+            padding: 15px 27px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .field-name {
+            position: relative;
+        }
+        #save-changes {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+        }
+        .field-label {
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .field-value {
+            font-size: 1.25rem;
+            line-height: 1;
+            text-transform: none;
+            outline: none;
+            min-height: 1.25rem;
+        }
+        .field-value[contenteditable="plaintext-only"]:focus {
+            outline: 1px dashed
+                color-mix(in srgb, var(--color-violet-400) 60%, transparent);
+            outline-offset: 4px;
+        }
+
+        /* ---- Photo cell --------------------------------------------------- */
+        .photo-cell {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            min-width: 0;
+            min-height: 0;
+        }
+        #ascii-display {
+            font-family:
+                "Monaspace Neon Var", ui-monospace, "SF Mono", Menlo, monospace;
             margin: 0;
-            padding: 0.6rem;
+            padding: 0;
             white-space: pre;
-            width: max-content;
+            text-align: center;
+            text-shadow: 0 0 6px rgba(166, 151, 252, 0.7);
+            /* font-size + line-height set inline via JS to fit the cell. */
         }
-        /* Let the display card grow with the ASCII at any font size,
-           breaking out of the body's 44rem column when the image gets wide.
-           Margin + transform centers the card on the page rather than on the
-           body column. Capped at viewport width so it never causes a
-           horizontal page scroll. */
-        #display {
-            width: max-content;
-            max-width: calc(100vw - 1.5rem);
-            margin-left: 50%;
-            transform: translateX(-50%);
+        .photo-btn-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
         }
-
-        /* Capture row — top of the unified controls card. */
-        .capture-row {
+        .photo-capture-controls {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Phase: empty (no saved photo, not capturing) — ADD PHOTO only. */
+        #card[data-photo-phase="empty"] #ascii-display,
+        #card[data-photo-phase="empty"] #photo-capture-controls,
+        #card[data-photo-phase="empty"] #replace-photo {
+            display: none !important;
+        }
+        /* Phase: capturing — preview + Open/Save controls. */
+        #card[data-photo-phase="capturing"] #add-photo,
+        #card[data-photo-phase="capturing"] #replace-photo {
+            display: none !important;
+        }
+        #card[data-photo-phase="capturing"] #ascii-display:not([hidden]) {
+            display: block;
+        }
+        /* Phase: saved — just the photo; hover reveals Replace (when authed). */
+        #card[data-photo-phase="saved"] #add-photo,
+        #card[data-photo-phase="saved"] #photo-capture-controls {
+            display: none !important;
+        }
+        #card[data-photo-phase="saved"] #replace-photo {
+            display: none;
+        }
+        #card[data-photo-phase="saved"][data-authed="1"]
+            .photo-cell:hover
+            #replace-photo,
+        #card[data-photo-phase="saved"][data-authed="1"]
+            .photo-cell:focus-within
+            #replace-photo {
+            display: inline-flex;
+        }
+        /* Unauthed visitors with no saved photo see an empty cell. */
+        #card[data-authed="0"] #add-photo {
+            display: none !important;
+        }
+
+        /* ---- Card footer -------------------------------------------------- */
+        .card-footer {
+            display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 1rem;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.5rem;
         }
-        .capture-row #status {
+        .laptop-password {
+            font-size: 1rem;
+            text-decoration:none;
+        }
+        .laptop-password:hover {
+            text-decoration:underline;
+        }
+        .card-footer-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        .message-block {
+            border: 1px solid var(--color-violet-400);
+            border-radius: 16px;
+            padding: 1rem 1.25rem;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        /* ---- Status / auth ----------------------------------------------- */
+        .status {
+            display: block;
+            min-height: 1.25rem;
+            margin-top: 1rem;
             font-size: 0.85rem;
-            opacity: 0.7;
-            margin-left: 0.5rem;
+            opacity: 0.75;
+            text-align: right;
         }
-        .lock-btn {
-            margin-left: auto;
+        .auth-card {
+            border: 2px solid var(--color-violet-400);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        .auth-card h2 {
+            margin: 0 0 0.75rem;
+            font-size: 1.1rem;
+        }
+        .auth-card p {
+            margin: 0.5rem 0;
+        }
+        .auth-card form {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .auth-card input[type="password"] {
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 2px solid var(--color-violet-400);
+            background: var(--color-service-black);
+            color: inherit;
+            font: inherit;
+            text-transform: none;
+            min-width: 14rem;
+            outline: none;
+            caret-color: #fff;
+        }
+        .auth-card input[type="password"]:focus,
+        .auth-card input[type="password"]:focus-visible {
+            outline: none;
+            border-color: #fff;
         }
         .copy-block {
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            background: color-mix(in srgb, currentColor 6%, transparent);
+            background: color-mix(in srgb, currentColor 8%, transparent);
             padding: 0.5rem 0.65rem;
-            border-radius: 6px;
-            margin: 0.5rem 0 1rem;
+            border-radius: 8px;
+            margin: 0.5rem 0 0;
             overflow: hidden;
+            text-transform: none;
         }
         .copy-block code {
             background: transparent;
@@ -261,95 +479,20 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             overflow-x: auto;
             flex: 1;
         }
+        .error {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+        }
 
-        /* Controls strip — tuning row below. */
-        #controls {
-            display: grid;
-            grid-template-columns: auto auto 1fr 1fr 1fr auto;
-            gap: 0.75rem 1rem;
-            align-items: center;
-        }
-        #controls select {
-            font: inherit;
-            padding: 0.25rem 0.4rem;
-            border-radius: 4px;
-            border: 1px solid var(--rule);
-            background: transparent;
-            color: inherit;
-        }
-        /* Copy button sits under the ASCII display itself so non-authed
-           visitors can use it too. */
-        .display-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 0.5rem;
-        }
-        .actions {
-            display: flex;
-            gap: 0.4rem;
-            align-self: end;
-        }
-        #controls fieldset {
-            border: 0;
-            padding: 0;
-            margin: 0;
-        }
-        #controls legend {
-            font-size: 0.8rem;
-            opacity: 0.7;
-            padding: 0;
-            margin-bottom: 0.3rem;
-        }
-        .swatches {
-            display: flex;
-            gap: 0.3rem;
-        }
-        .swatch {
-            width: 1.4rem;
-            height: 1.4rem;
-            border-radius: 4px;
-            border: 2px solid transparent;
-            cursor: pointer;
-            position: relative;
-        }
-        .swatch input {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-        .swatch:has(input:checked) {
-            border-color: currentColor;
-        }
-        .slider {
-            display: flex;
-            flex-direction: column;
-            font-size: 0.8rem;
-            opacity: 0.85;
-        }
-        .slider .val {
-            float: right;
-            opacity: 0.6;
-            font-variant-numeric: tabular-nums;
-        }
-        .slider input {
-            width: 100%;
-        }
-        .small {
-            font-size: 0.8rem;
-            padding: 0.35rem 0.6rem;
-        }
-        .danger {
-            color: #c00;
-            border-color: color-mix(in srgb, #c00 40%, var(--rule));
-        }
-        @media (max-width: 36rem) {
-            #controls {
-                grid-template-columns: 1fr 1fr;
+        @media (max-width: 700px) {
+            .card {
+                grid-template-columns: 1fr;
+                aspect-ratio: auto;
             }
-            .actions {
-                grid-column: 1 / -1;
-                justify-content: flex-end;
+            .card-left {
+                border-right: 0;
+                border-bottom: 2px solid var(--color-violet-400);
+                aspect-ratio: 1 / 1;
             }
         }
     </style>
@@ -358,10 +501,6 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         import { canvasToAscii, type AsciiOptions } from "../lib/ascii.ts";
 
         // --- Character ramp presets ---------------------------------------------
-        // Adapted from the ascii-ify upstream:
-        //   - Blocks:   dense full-cell shades (looks like a photo)
-        //   - Detailed: ASCII glyphs (looks like text)
-        //   - Basic:    middle ground — readable ASCII at any size
         const CHAR_PRESETS = {
             blocks: "█▓▒░ ",
             detailed:
@@ -370,56 +509,48 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         } as const;
         type CharsPreset = keyof typeof CHAR_PRESETS;
 
-        // --- Settings -----------------------------------------------------------
-        const COLORS = [
-            "#FFFFFF",
-            "#33FF00",
-            "#00FFF0",
-            "#FFB000",
-            "#0099FF",
-            "#FF3366",
-            "#FFCC00",
-            "#A020F0",
-        ];
-        // One grid for everything: live preview, saved photo, OG render. Sized
-        // to the OG image aspect (1200×630 ≈ 1.905:1) so the on-page UI, the
-        // stored JPEG, and the OG PNG are all the same shape.
-        const GRID_W = 200;
-        const GRID_H = 105;
-        // OG canvas dimensions (standard og:image).
-        const OG_PX_W = 1200;
-        const OG_PX_H = 630;
-        const TARGET_ASPECT = OG_PX_W / OG_PX_H;
-        const DEFAULT_SETTINGS = {
-            color: "#00FFF0",
-            chars: "blocks" as CharsPreset,
-            contrast: 100,
-            brightness: 0,
-            size: 5,
-        };
-        const STORAGE_KEY = "ascii-settings-v3";
-
         type Settings = {
             color: string;
             chars: CharsPreset;
             contrast: number;
             brightness: number;
-            size: number;
+            name: string;
+            exp: string;
         };
 
-        function loadSettings(): Settings {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-            } catch {}
-            return { ...DEFAULT_SETTINGS };
+        // Matches --color-violet-400 in the layout. Fixed for everyone —
+        // the per-user tuning UI is gone, so the renderer always uses these.
+        const settings: Settings = {
+            color: "#a697fc",
+            chars: "blocks",
+            contrast: 100,
+            brightness: 0,
+            name: "Cloud Watcher",
+            exp: "",
+        };
+
+        // ASCII grid + webcam crop both use 4:3, matching the photo-cell's
+        // aspect-ratio so the ASCII fills the cell with no letterboxing.
+        const GRID_W = 200;
+        const GRID_H = 150;
+        const TARGET_ASPECT = GRID_W / GRID_H;
+        // Card / og:image canvas dimensions (standard og:image).
+        const OG_PX_W = 1200;
+        const OG_PX_H = 630;
+
+        const VIOLET = "#a697fc";
+        const SERVICE_BLACK = "#1f1b21";
+
+        function formatExp(d: Date): string {
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            return `${mm}/${dd}/${d.getFullYear()}`;
         }
-        function persist(s: Settings) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-            } catch {}
+        function expTenYearsOut(): string {
+            const d = new Date();
+            d.setFullYear(d.getFullYear() + 10);
+            return formatExp(d);
         }
-        let settings: Settings = loadSettings();
 
         function asciiOptions(gridW: number, gridH: number): AsciiOptions {
             return {
@@ -434,10 +565,6 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         // Center-crop `src` to `gridW × gridH`'s aspect ratio, draw the crop into
         // the shared work canvas (scaled up to give the ASCII algorithm enough
         // pixels to sample), then convert to ASCII text.
-        //
-        // The crop is what makes any webcam aspect ratio fill the output shape
-        // without stretching: a 4:3 cam cropped to 1:1 loses the sides; a 16:9
-        // cam cropped to 1:1 loses more. The 2:1-ish OG crop trims top/bottom.
         function asciiFromSource(
             src: CanvasImageSource,
             srcW: number,
@@ -458,7 +585,6 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 cropH = Math.round(srcW / targetAspect);
                 cropY = Math.floor((srcH - cropH) / 2);
             }
-            // 2× the grid is plenty of source pixels per character cell.
             const workW = gridW * 2;
             const workH = gridH * 2;
             workCanvas.width = workW;
@@ -480,53 +606,85 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         }
 
         // --- DOM ----------------------------------------------------------------
+        const card = document.getElementById("card") as HTMLElement;
+        const authed = card.dataset.authed === "1";
         const asciiDisplay = document.getElementById(
             "ascii-display",
         ) as HTMLPreElement;
-        const displaySection = document.getElementById(
-            "display",
+        const photoCell = document.getElementById("photo-cell") as HTMLElement;
+        const addPhotoBtn = document.getElementById(
+            "add-photo",
+        ) as HTMLButtonElement | null;
+        const replacePhotoBtn = document.getElementById(
+            "replace-photo",
+        ) as HTMLButtonElement | null;
+        const captureControls = document.getElementById(
+            "photo-capture-controls",
         ) as HTMLElement;
+        const toggleCamBtn = document.getElementById(
+            "toggle-cam",
+        ) as HTMLButtonElement | null;
+        const savePhotoBtn = document.getElementById(
+            "save-photo",
+        ) as HTMLButtonElement | null;
+        const nameValue = document.getElementById(
+            "name-value",
+        ) as HTMLElement;
+        const expValue = document.getElementById("exp-value") as HTMLElement;
+        const saveChangesBtn = document.getElementById(
+            "save-changes",
+        ) as HTMLButtonElement | null;
+        const downloadBtn = document.getElementById(
+            "download",
+        ) as HTMLButtonElement;
+        const authToggleBtn = document.getElementById(
+            "auth-toggle",
+        ) as HTMLButtonElement | null;
         const authSection = document.getElementById(
             "auth",
         ) as HTMLElement | null;
-        // The auth form is rendered with `hidden` to prevent a flash for
-        // visitors who'll never need it. We unhide it only when:
-        //  - the Sign Out button set sessionStorage show-auth (in-flow), OR
-        //  - the URL carries ?unlock= (legacy alias / bookmarkable entry), OR
-        //  - loadPhoto() comes back 404 (no saved photo at all).
-        const showAuthFlag = sessionStorage.getItem("show-auth") === "1";
-        if (showAuthFlag) sessionStorage.removeItem("show-auth");
-        const showAuthExplicitly =
-            showAuthFlag ||
-            new URLSearchParams(location.search).has("unlock");
-        if (authSection && showAuthExplicitly) authSection.hidden = false;
-        const status = document.getElementById("status");
-        const setStatus = (s: string) => {
-            if (status) status.textContent = s;
-        };
-
-        function applyDisplayStyle() {
-            asciiDisplay.style.color = settings.color;
-            asciiDisplay.style.fontSize = `${settings.size}px`;
-            // Keep cells visually square: monospace char width ≈ 0.6 × fontSize,
-            // so a line-height of 0.6 × fontSize gives a square cell aspect.
-            asciiDisplay.style.lineHeight = `${settings.size * 0.6}px`;
-        }
-        applyDisplayStyle();
-
-        // --- Render state -------------------------------------------------------
-        type Mode = "idle" | "photo" | "live";
-        let mode: Mode = "idle";
-        // The original JPEG (or current video frame) is the source of truth; we
-        // crop differently for the on-page display vs. the OG image.
-        let cachedSourceCanvas: HTMLCanvasElement | null = null;
-        let stream: MediaStream | null = null;
-        let rafId: number | null = null;
-
+        const authCancelBtn = document.getElementById(
+            "auth-cancel",
+        ) as HTMLButtonElement | null;
+        const status = document.getElementById("status") as HTMLElement;
         const video = document.getElementById("video") as HTMLVideoElement;
         const workCanvas = document.getElementById(
             "work-canvas",
         ) as HTMLCanvasElement;
+        const setStatus = (s: string) => {
+            status.textContent = s;
+        };
+        const setPhase = (p: "empty" | "capturing" | "saved") => {
+            card.dataset.photoPhase = p;
+        };
+
+        // --- Render state -------------------------------------------------------
+        type Mode = "idle" | "photo" | "live";
+        let mode: Mode = "idle";
+        let cachedSourceCanvas: HTMLCanvasElement | null = null;
+        let stream: MediaStream | null = null;
+        let rafId: number | null = null;
+
+        // Auto-size the ASCII font to fill the photo cell. Pick the largest
+        // font where the GRID_W × GRID_H grid fits in both axes of the cell.
+        function applyDisplayStyle() {
+            asciiDisplay.style.color = settings.color;
+            const cellW = photoCell.clientWidth || 350;
+            const cellH = photoCell.clientHeight || 195;
+            const sizeByW = cellW / (GRID_W * 0.6);
+            const sizeByH = cellH / (GRID_H * 0.6);
+            const size = Math.max(1, Math.min(sizeByW, sizeByH));
+            asciiDisplay.style.fontSize = `${size}px`;
+            asciiDisplay.style.lineHeight = `${size * 0.6}px`;
+            // If the cell is wider than the rendered grid, stretch the pre
+            // horizontally to fill the width — eliminates side letterboxing
+            // without changing the font-size (transforms don't reflow).
+            const renderedW = size * GRID_W * 0.6;
+            const scaleX = renderedW > 0 ? cellW / renderedW : 1;
+            asciiDisplay.style.transformOrigin = "center center";
+            asciiDisplay.style.transform =
+                scaleX > 1.001 ? `scaleX(${scaleX})` : "none";
+        }
 
         function renderPhotoFromCache() {
             if (!cachedSourceCanvas) return;
@@ -537,6 +695,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 GRID_W,
                 GRID_H,
             );
+            asciiDisplay.hidden = false;
         }
 
         function renderLiveFrame() {
@@ -548,6 +707,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 GRID_W,
                 GRID_H,
             );
+            asciiDisplay.hidden = false;
         }
 
         function liveLoop() {
@@ -555,212 +715,130 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             if (mode === "live") rafId = requestAnimationFrame(liveLoop);
         }
 
-        // --- Load saved photo on first paint -----------------------------------
-        async function loadPhoto(): Promise<void> {
-            const res = await fetch("/api/photo", { cache: "no-store" });
-            if (!res.ok) {
-                // No saved photo → reveal the auth form so a first-time owner
-                // can unlock and capture.
-                if (authSection) authSection.hidden = false;
-                return;
-            }
-            if (mode === "live") return; // don't fight the live feed
-            const blob = await res.blob();
-            cachedSourceCanvas = await blobToCanvas(blob);
-            mode = "photo";
-            displaySection.hidden = false;
-            renderPhotoFromCache();
-            // With a cached photo on hand, Save becomes "re-render OG with
-            // current settings". Only available to authed users (#save-photo
-            // only exists in their DOM).
-            const saveBtn = document.getElementById(
-                "save-photo",
-            ) as HTMLButtonElement | null;
-            if (saveBtn) saveBtn.disabled = false;
-        }
-
-        // Pull any settings the owner persisted last save. We apply them on
-        // top of localStorage so every visitor — including incognito — sees
-        // the photo the way the owner left it.
+        // --- Settings persistence (server-side only; no localStorage) ---------
         async function loadServerSettings(): Promise<void> {
             const res = await fetch("/api/settings", { cache: "no-store" });
             if (!res.ok) return;
             try {
                 const incoming = (await res.json()) as Partial<Settings>;
-                settings = { ...settings, ...incoming };
-                applyDisplayStyle();
-                syncControlsFromSettings();
-                if (mode === "photo") renderPhotoFromCache();
+                Object.assign(settings, incoming);
             } catch {}
         }
 
-        // Push current settings to KV. Auth-gated server-side; if the call
-        // 401s it's silently ignored (Save's own status message will fire).
         async function postSettings(): Promise<void> {
             await fetch("/api/settings", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                    color: settings.color,
-                    chars: settings.chars,
-                    contrast: settings.contrast,
-                    brightness: settings.brightness,
-                    size: settings.size,
-                }),
+                body: JSON.stringify(settings),
             });
         }
 
-        // Push the current `settings` values into the UI controls (sliders,
-        // swatches, select) so they reflect what the owner saved. No-op when
-        // the controls aren't rendered (non-authed visitor).
-        function syncControlsFromSettings(): void {
-            const contrast = document.getElementById(
-                "contrast",
-            ) as HTMLInputElement | null;
-            if (!contrast) return;
-            const contrastVal = document.getElementById("contrast-val");
-            const brightness = document.getElementById(
-                "brightness",
-            ) as HTMLInputElement | null;
-            const brightnessVal = document.getElementById("brightness-val");
-            const size = document.getElementById(
-                "size",
-            ) as HTMLInputElement | null;
-            const sizeVal = document.getElementById("size-val");
-            const chars = document.getElementById(
-                "chars",
-            ) as HTMLSelectElement | null;
-            if (contrast) contrast.value = String(settings.contrast);
-            if (contrastVal) contrastVal.textContent = String(settings.contrast);
-            if (brightness) brightness.value = String(settings.brightness);
-            if (brightnessVal)
-                brightnessVal.textContent = String(settings.brightness);
-            if (size) size.value = String(settings.size);
-            if (sizeVal) sizeVal.textContent = String(settings.size);
-            if (chars) chars.value = settings.chars;
-            const checked = document.querySelector<HTMLInputElement>(
-                `#swatches input[value="${settings.color}"]`,
-            );
-            if (checked) checked.checked = true;
+        function applyNameAndExpToUI() {
+            nameValue.textContent = settings.name;
+            expValue.textContent = settings.exp || expTenYearsOut();
         }
 
-        // Kick both off in parallel; loadServerSettings re-renders the photo
-        // if its result arrives after loadPhoto.
-        loadPhoto();
-        loadServerSettings();
-
-        // --- Controls UI --------------------------------------------------------
-        function buildControls() {
-            // The whole controls block is only rendered in the SSR pass when
-            // the visitor is authed. Non-authed visitors still get the saved
-            // photo and the baseline display style, but no tuning UI.
-            const contrast = document.getElementById(
-                "contrast",
-            ) as HTMLInputElement | null;
-            if (!contrast) return;
-
-            const swatchHost = document.getElementById("swatches");
-            if (swatchHost) {
-                swatchHost.innerHTML = COLORS.map(
-                    (c) => `
-          <label class="swatch" style="background:${c}">
-            <input type="radio" name="color" value="${c}" ${c === settings.color ? "checked" : ""}>
-          </label>
-        `,
-                ).join("");
-                swatchHost.addEventListener("change", (e) => {
-                    const t = e.target as HTMLInputElement;
-                    if (t.name !== "color") return;
-                    settings.color = t.value;
-                    persist(settings);
-                    applyDisplayStyle();
-                    setStatus("");
-                });
+        // --- Load saved photo on first paint -----------------------------------
+        async function loadPhoto(): Promise<void> {
+            const res = await fetch("/api/photo", { cache: "no-store" });
+            if (!res.ok) {
+                return;
             }
-
-            const contrastVal = document.getElementById("contrast-val")!;
-            const brightness = document.getElementById(
-                "brightness",
-            ) as HTMLInputElement;
-            const brightnessVal = document.getElementById("brightness-val")!;
-            const size = document.getElementById("size") as HTMLInputElement;
-            const sizeVal = document.getElementById("size-val")!;
-            const chars = document.getElementById("chars") as HTMLSelectElement;
-            contrast.value = String(settings.contrast);
-            contrastVal.textContent = String(settings.contrast);
-            brightness.value = String(settings.brightness);
-            brightnessVal.textContent = String(settings.brightness);
-            size.value = String(settings.size);
-            sizeVal.textContent = String(settings.size);
-            chars.value = settings.chars;
-
-            const onSlider = () => {
-                settings.contrast = Number(contrast.value);
-                settings.brightness = Number(brightness.value);
-                contrastVal.textContent = String(settings.contrast);
-                brightnessVal.textContent = String(settings.brightness);
-                persist(settings);
-                setStatus("");
-                if (mode === "photo") renderPhotoFromCache();
-                // live mode: the rAF loop picks up settings on the next frame
-            };
-            contrast.addEventListener("input", onSlider);
-            brightness.addEventListener("input", onSlider);
-
-            chars.addEventListener("change", () => {
-                settings.chars = chars.value as CharsPreset;
-                persist(settings);
-                setStatus("");
-                if (mode === "photo") renderPhotoFromCache();
-            });
-
-            // Size only affects display CSS, not the ASCII text itself — no
-            // re-render needed.
-            size.addEventListener("input", () => {
-                settings.size = Number(size.value);
-                sizeVal.textContent = String(settings.size);
-                persist(settings);
-                applyDisplayStyle();
-                setStatus("");
-            });
-
-            document.getElementById("reset")?.addEventListener("click", () => {
-                settings = { ...DEFAULT_SETTINGS };
-                persist(settings);
-                contrast.value = String(settings.contrast);
-                contrastVal.textContent = String(settings.contrast);
-                brightness.value = String(settings.brightness);
-                brightnessVal.textContent = String(settings.brightness);
-                size.value = String(settings.size);
-                sizeVal.textContent = String(settings.size);
-                chars.value = settings.chars;
-                const checked = swatchHost?.querySelector<HTMLInputElement>(
-                    `input[value="${settings.color}"]`,
-                );
-                if (checked) checked.checked = true;
-                applyDisplayStyle();
-                setStatus("");
-                if (mode === "photo") renderPhotoFromCache();
-            });
-
-            // Clear photo — auth-gated server-side; this button only exists
-            // in the DOM when the SSR pass saw an authed session. No confirm:
-            // retaking is easy enough that fat-fingering isn't catastrophic.
-            document
-                .getElementById("clear-photo")
-                ?.addEventListener("click", async () => {
-                    const res = await fetch("/api/photo", { method: "DELETE" });
-                    if (res.ok) {
-                        // Quickest way back to a clean state — the next paint
-                        // will fetch /api/photo, get 404, and the display
-                        // section will stay hidden.
-                        location.reload();
-                    } else {
-                        setStatus(`Delete failed: ${res.status}`);
-                    }
-                });
+            if (mode === "live") return;
+            const blob = await res.blob();
+            cachedSourceCanvas = await blobToCanvas(blob);
+            mode = "photo";
+            applyDisplayStyle();
+            renderPhotoFromCache();
+            setPhase("saved");
         }
-        buildControls();
+
+        async function init() {
+            applyDisplayStyle();
+            await loadServerSettings();
+            applyNameAndExpToUI();
+            await loadPhoto();
+            // If settings came back from KV after loadPhoto, re-render to apply
+            // any color/chars change in case future tuning is reintroduced.
+            if (mode === "photo") {
+                applyDisplayStyle();
+                renderPhotoFromCache();
+            }
+        }
+        init();
+
+        // The font-size calc depends on the photo cell's final layout, which
+        // settles after CSS arrives, after the web font swaps, and on every
+        // viewport resize. ResizeObserver covers all three.
+        new ResizeObserver(() => {
+            applyDisplayStyle();
+        }).observe(photoCell);
+        document.fonts?.ready.then(() => {
+            applyDisplayStyle();
+        });
+
+        // --- Name editing ------------------------------------------------------
+        if (authed && saveChangesBtn) {
+            nameValue.addEventListener("input", () => {
+                saveChangesBtn.hidden = false;
+                saveChangesBtn.textContent = "Save Changes";
+                setStatus("");
+            });
+            // Plain text only — strip line breaks on paste.
+            nameValue.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    nameValue.blur();
+                }
+            });
+
+            saveChangesBtn.addEventListener("click", async () => {
+                saveChangesBtn.disabled = true;
+                settings.name =
+                    (nameValue.textContent || "").trim() || "Cloud Watcher";
+                nameValue.textContent = settings.name;
+                settings.exp = expTenYearsOut();
+                expValue.textContent = settings.exp;
+                try {
+                    await postSettings();
+                    // Refresh the share card so the new name flows through
+                    // to /api/og.png. Best-effort: failure doesn't block
+                    // the saved-state flip below.
+                    try {
+                        await postCardOg();
+                    } catch {}
+                    saveChangesBtn.textContent = "Changes Saved";
+                    setTimeout(() => {
+                        saveChangesBtn.hidden = true;
+                        saveChangesBtn.textContent = "Save Changes";
+                        saveChangesBtn.disabled = false;
+                    }, 1200);
+                } catch (err) {
+                    setStatus(`Save failed: ${(err as Error).message}`);
+                    saveChangesBtn.disabled = false;
+                }
+            });
+        }
+
+        // --- Auth header button ------------------------------------------------
+        authToggleBtn?.addEventListener("click", async () => {
+            if (authed) {
+                // Sign Out
+                const res = await fetch("/api/auth", { method: "DELETE" });
+                if (res.ok) location.reload();
+                return;
+            }
+            // Sign In → reveal the auth form below the card and scroll to it.
+            if (authSection) {
+                authSection.hidden = false;
+                authSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                (document.getElementById("password") as HTMLInputElement)?.focus();
+            }
+        });
+
+        authCancelBtn?.addEventListener("click", () => {
+            if (authSection) authSection.hidden = true;
+        });
 
         // --- Auth form ---------------------------------------------------------
         const authForm = document.getElementById(
@@ -779,25 +857,10 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 body: JSON.stringify({ password }),
             });
             if (res.ok) {
-                // Clean URL so ?unlock doesn't linger after a successful
-                // auth — the form should stay hidden on subsequent visits.
                 location.href = "/";
             } else if (authError) {
                 authError.textContent = "Wrong password.";
                 authError.hidden = false;
-            }
-        });
-
-        // --- Sign Out (destroy session and show the auth form) ----------------
-        // Drops the session server-side, then reloads with a sessionStorage
-        // flag so the next paint reveals the form. We don't put it in the
-        // URL — that's the legacy ?unlock alias, still supported below for
-        // anyone bookmarking the unlock entry point.
-        document.getElementById("lock")?.addEventListener("click", async () => {
-            const res = await fetch("/api/auth", { method: "DELETE" });
-            if (res.ok) {
-                sessionStorage.setItem("show-auth", "1");
-                location.reload();
             }
         });
 
@@ -819,17 +882,23 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             }, 1500);
         });
 
-        // --- Webcam ------------------------------------------------------------
-        const toggleBtn = document.getElementById(
-            "toggle-cam",
-        ) as HTMLButtonElement | null;
-        const saveBtn = document.getElementById(
-            "save-photo",
-        ) as HTMLButtonElement | null;
+        // --- Photo cell phases -------------------------------------------------
+        function enterCaptureMode() {
+            setPhase("capturing");
+            captureControls.hidden = false;
+            asciiDisplay.hidden = true;
+            applyDisplayStyle();
+            if (savePhotoBtn) savePhotoBtn.hidden = true;
+            setCamButtonLabel(false);
+        }
 
+        addPhotoBtn?.addEventListener("click", enterCaptureMode);
+        replacePhotoBtn?.addEventListener("click", enterCaptureMode);
+
+        // --- Webcam ------------------------------------------------------------
         function setCamButtonLabel(open: boolean) {
-            if (toggleBtn)
-                toggleBtn.textContent = open ? "Close Webcam" : "Open Webcam";
+            if (toggleCamBtn)
+                toggleCamBtn.textContent = open ? "Cancel" : "Open Webcam";
         }
 
         function closeCam() {
@@ -839,18 +908,17 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             stream = null;
             video.srcObject = null;
             setCamButtonLabel(false);
-            // Switch back to displaying the saved frame if we have one,
-            // otherwise hide the display section. Save stays enabled when a
-            // cached photo exists so the user can re-save with tweaked
-            // settings (re-renders the OG only).
+            if (savePhotoBtn) savePhotoBtn.hidden = true;
+            captureControls.hidden = true;
             if (cachedSourceCanvas) {
                 mode = "photo";
                 renderPhotoFromCache();
-                if (saveBtn) saveBtn.disabled = false;
+                setPhase("saved");
             } else {
                 mode = "idle";
-                displaySection.hidden = true;
-                if (saveBtn) saveBtn.disabled = true;
+                asciiDisplay.hidden = true;
+                asciiDisplay.textContent = "";
+                setPhase("empty");
             }
         }
 
@@ -862,9 +930,9 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 video.srcObject = stream;
                 await video.play();
                 mode = "live";
-                displaySection.hidden = false;
-                if (saveBtn) saveBtn.disabled = false;
+                if (savePhotoBtn) savePhotoBtn.hidden = false;
                 setCamButtonLabel(true);
+                applyDisplayStyle();
                 if (rafId !== null) cancelAnimationFrame(rafId);
                 liveLoop();
                 setStatus("Streaming live ASCII…");
@@ -873,95 +941,30 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             }
         }
 
-        toggleBtn?.addEventListener("click", () => {
+        toggleCamBtn?.addEventListener("click", () => {
             if (stream) closeCam();
             else openCam();
         });
 
-        // Render the current ASCII as a 1200×630 PNG suitable for og:image.
-        // The grid is sized to match the canvas aspect (≈200×105), and we
-        // auto-fit the font width to fill the canvas without horizontal padding.
-        async function renderOgPng(
-            asciiText: string,
-            color: string,
-        ): Promise<Blob> {
-            const W = OG_PX_W;
-            const H = OG_PX_H;
-            const lines = asciiText.split("\n");
-            const rowHeight = H / lines.length;
-
-            const c = document.createElement("canvas");
-            c.width = W;
-            c.height = H;
-            const ctx = c.getContext("2d");
-            if (!ctx) throw new Error("No 2D context");
-
-            // Initial font size: ~1.6× row height fits monospace chars naturally.
-            // Then measure the widest line and scale down to fit W exactly.
-            let fontSize = rowHeight * 1.6;
-            const fontFamily = 'ui-monospace, "SF Mono", Menlo, monospace';
-            ctx.font = `${fontSize}px ${fontFamily}`;
-            const widest = lines.reduce(
-                (m, l) => Math.max(m, ctx.measureText(l).width),
-                0,
-            );
-            if (widest > 0 && widest !== W) {
-                fontSize *= W / widest;
-                ctx.font = `${fontSize}px ${fontFamily}`;
-            }
-
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, W, H);
-            ctx.textBaseline = "top";
-            ctx.fillStyle = color;
-
-            const finalWidth = ctx.measureText(lines[0] ?? "").width;
-            const xOffset = Math.max(0, (W - finalWidth) / 2);
-            for (let i = 0; i < lines.length; i++) {
-                ctx.fillText(lines[i], xOffset, i * rowHeight);
-            }
-            return new Promise((resolve, reject) =>
-                c.toBlob(
-                    (b) =>
-                        b ? resolve(b) : reject(new Error("toBlob failed")),
-                    "image/png",
-                ),
-            );
-        }
-
-        async function postOgFromSource(
-            source: HTMLCanvasElement,
-        ): Promise<void> {
-            const asciiText = asciiFromSource(
-                source,
-                source.width,
-                source.height,
-                GRID_W,
-                GRID_H,
-            );
-            const ogPng = await renderOgPng(asciiText, settings.color);
-            const ogRes = await fetch("/api/photo", {
+        // The OG image is just the full card render — the same PNG the
+        // Download button produces. Stored under `current.og` in KV and
+        // served by /api/og.png. Requires the asciiDisplay to already hold
+        // the latest photo text (caller's responsibility).
+        async function postCardOg(): Promise<void> {
+            const blob = await renderCardPng();
+            const res = await fetch("/api/photo", {
                 method: "POST",
                 headers: { "content-type": "image/png" },
-                body: ogPng,
+                body: blob,
             });
-            if (!ogRes.ok) throw new Error(`OG POST ${ogRes.status}`);
+            if (!res.ok) throw new Error(`OG POST ${res.status}`);
         }
 
-        saveBtn?.addEventListener("click", async () => {
-            // Two modes:
-            //   live → capture a fresh frame, write a new JPEG, then write the
-            //          OG PNG derived from it.
-            //   photo → re-render the OG from the cached source with current
-            //           settings (color/chars/contrast/brightness). JPEG is
-            //           untouched.
+        savePhotoBtn?.addEventListener("click", async () => {
             if (mode === "live" && stream && video.videoWidth) {
-                saveBtn.disabled = true;
+                savePhotoBtn.disabled = true;
                 setStatus("Saving…");
 
-                // Center-crop the video frame to the target aspect (1200:630)
-                // before encoding. The stored bytes already match the OG shape
-                // and the on-page display — one source of truth.
                 const srcW = video.videoWidth,
                     srcH = video.videoHeight;
                 const srcAspect = srcW / srcH;
@@ -1006,66 +1009,201 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 });
                 if (!jpegRes.ok) {
                     setStatus(`Save failed: ${jpegRes.status}`);
-                    if (saveBtn) saveBtn.disabled = false;
+                    if (savePhotoBtn) savePhotoBtn.disabled = false;
                     return;
                 }
 
                 cachedSourceCanvas = await blobToCanvas(jpeg);
+                // Populate the ASCII display from the new source before we
+                // snapshot the card — renderCardPng reads asciiDisplay.
+                mode = "photo";
+                renderPhotoFromCache();
+                settings.exp = expTenYearsOut();
+                expValue.textContent = settings.exp;
 
+                let ogOk = true;
+                let ogErr: Error | null = null;
                 try {
                     setStatus("Rendering OG…");
-                    await postOgFromSource(cachedSourceCanvas);
+                    await postCardOg();
                     await postSettings();
                 } catch (err) {
-                    setStatus(
-                        `Photo saved; OG failed: ${(err as Error).message}`,
-                    );
+                    ogOk = false;
+                    ogErr = err as Error;
                 }
 
-                // Close the live feed and switch to displaying the saved frame.
                 closeCam();
-                setStatus("Saved.");
-                return;
-            }
-
-            // Photo mode: re-render OG and persist settings. JPEG untouched.
-            if (mode === "photo" && cachedSourceCanvas) {
-                saveBtn.disabled = true;
-                setStatus("Saving…");
-                try {
-                    await postOgFromSource(cachedSourceCanvas);
-                    await postSettings();
-                    setStatus("Saved.");
-                } catch (err) {
-                    setStatus(`Save failed: ${(err as Error).message}`);
-                }
-                saveBtn.disabled = false;
+                setPhase("saved");
+                renderPhotoFromCache();
+                setStatus(
+                    ogOk ? "Saved." : `Photo saved; OG failed: ${ogErr?.message}`,
+                );
                 return;
             }
         });
 
-        // --- Copy ASCII to clipboard ------------------------------------------
-        // Lives in the display section, so it's available to non-authed
-        // visitors too. They have no #status element, so we flash the button
-        // label for feedback instead.
-        const copyBtn = document.getElementById(
-            "copy-photo",
-        ) as HTMLButtonElement | null;
-        copyBtn?.addEventListener("click", async () => {
-            const text = asciiDisplay.textContent ?? "";
-            if (!text) return;
-            const original = copyBtn.textContent ?? "Copy";
+        // --- Download card as PNG ---------------------------------------------
+        async function loadBadgeImage(): Promise<HTMLImageElement> {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error("badge load failed"));
+                img.src = "/badge.svg";
+            });
+        }
+
+        async function renderCardPng(): Promise<Blob> {
+            // Standard og:image / social card size. The internal layout is
+            // designed at a 696×369 baseline; SCALE maps that into 1200×630
+            // (the same ratio — 1200/630 ≈ 696/369 ≈ 1.905).
+            const W = OG_PX_W;
+            const H = OG_PX_H;
+            const SCALE = W / 696;
+            const BORDER = 4 * SCALE;
+            const DIVIDER = 2 * SCALE;
+
+            const c = document.createElement("canvas");
+            c.width = W;
+            c.height = H;
+            const ctx = c.getContext("2d");
+            if (!ctx) throw new Error("No 2D context");
+
+            // Ensure font is loaded before drawing text.
+            await document.fonts.load(`${20 * SCALE}px "Monaspace Neon Var"`);
+
+            // Background + outer border.
+            ctx.fillStyle = SERVICE_BLACK;
+            ctx.fillRect(0, 0, W, H);
+            ctx.strokeStyle = VIOLET;
+            ctx.lineWidth = BORDER;
+            ctx.strokeRect(BORDER / 2, BORDER / 2, W - BORDER, H - BORDER);
+
+            // Vertical divider between left/right halves.
+            const leftW = Math.round(W * (347 / 696));
+            ctx.fillStyle = VIOLET;
+            ctx.fillRect(leftW - DIVIDER / 2, 0, DIVIDER, H);
+
+            // Badge on the left.
             try {
-                await navigator.clipboard.writeText(text);
-                copyBtn.textContent = "Copied!";
-                setStatus("Copied to clipboard.");
-            } catch (err) {
-                copyBtn.textContent = "Copy failed";
-                setStatus(`Copy failed: ${(err as Error).message}`);
+                const badge = await loadBadgeImage();
+                const padding = 20 * SCALE;
+                const availW = leftW - padding * 2;
+                const availH = H - padding * 2;
+                const badgeAspect = badge.width / badge.height;
+                let bw = availW;
+                let bh = bw / badgeAspect;
+                if (bh > availH) {
+                    bh = availH;
+                    bw = bh * badgeAspect;
+                }
+                ctx.drawImage(
+                    badge,
+                    (leftW - bw) / 2,
+                    (H - bh) / 2,
+                    bw,
+                    bh,
+                );
+            } catch {
+                // Skip badge if it fails to load — the rest of the card is
+                // still valuable.
             }
-            setTimeout(() => {
-                copyBtn.textContent = original;
-            }, 1500);
+
+            // Right column: NAME / EXP / PHOTO with 2px horizontal dividers.
+            const rightX = leftW + DIVIDER / 2;
+            const rightW = W - rightX;
+            const fieldH = 87 * SCALE;
+            const padX = 27 * SCALE;
+            const padTop = 15 * SCALE;
+            const labelSize = 16 * SCALE;
+            const valueSize = 20 * SCALE;
+            const gap = 14 * SCALE;
+
+            const drawField = (y: number, label: string, value: string) => {
+                ctx.fillStyle = VIOLET;
+                ctx.textBaseline = "top";
+                ctx.font = `${labelSize}px "Monaspace Neon Var", ui-monospace, monospace`;
+                ctx.fillText(label.toUpperCase(), rightX + padX, y + padTop);
+                ctx.font = `${valueSize}px "Monaspace Neon Var", ui-monospace, monospace`;
+                ctx.fillText(
+                    value,
+                    rightX + padX,
+                    y + padTop + labelSize + gap,
+                );
+                // Bottom divider.
+                ctx.fillRect(rightX, y + fieldH - DIVIDER / 2, rightW, DIVIDER);
+            };
+
+            drawField(0, "Name", settings.name);
+            drawField(fieldH, "EXP", settings.exp || expTenYearsOut());
+
+            // Photo region: bottom of right column.
+            const photoY = fieldH * 2;
+            const photoH = H - photoY;
+            const photoX = rightX;
+            const photoW = rightW;
+
+            const asciiText = asciiDisplay.textContent || "";
+            if (asciiText) {
+                const lines = asciiText.split("\n");
+                // Fit text to the photo region.
+                const cellPadding = 8 * SCALE;
+                const availW = photoW - cellPadding * 2;
+                const availH = photoH - cellPadding * 2;
+                const rowsCount = lines.length;
+                let fontSize = availH / rowsCount / 0.6;
+                ctx.font = `${fontSize}px "Monaspace Neon Var", ui-monospace, monospace`;
+                const widest = lines.reduce(
+                    (m, l) => Math.max(m, ctx.measureText(l).width),
+                    0,
+                );
+                if (widest > availW) {
+                    fontSize *= availW / widest;
+                    ctx.font = `${fontSize}px "Monaspace Neon Var", ui-monospace, monospace`;
+                }
+                const rowHeight = fontSize * 0.6;
+                const totalH = rowHeight * rowsCount;
+                const finalWidest = lines.reduce(
+                    (m, l) => Math.max(m, ctx.measureText(l).width),
+                    0,
+                );
+                const xOff = photoX + (photoW - finalWidest) / 2;
+                const yOff = photoY + (photoH - totalH) / 2;
+                ctx.fillStyle = VIOLET;
+                ctx.textBaseline = "top";
+                for (let i = 0; i < lines.length; i++) {
+                    ctx.fillText(lines[i], xOff, yOff + i * rowHeight);
+                }
+            }
+
+            return new Promise((resolve, reject) =>
+                c.toBlob(
+                    (b) =>
+                        b ? resolve(b) : reject(new Error("toBlob failed")),
+                    "image/png",
+                ),
+            );
+        }
+
+        downloadBtn.addEventListener("click", async () => {
+            downloadBtn.disabled = true;
+            try {
+                const blob = await renderCardPng();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "pulumi-cloud-watchers-id.png";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch (err) {
+                setStatus(`Download failed: ${(err as Error).message}`);
+            } finally {
+                downloadBtn.disabled = false;
+            }
         });
     </script>
 </Layout>
+</content>
+</invoke>
