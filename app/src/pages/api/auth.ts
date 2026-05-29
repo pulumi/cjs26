@@ -6,6 +6,14 @@ import { env } from "cloudflare:workers";
 //   DELETE /api/auth              → 204; destroys the session ("lock").
 export const prerender = false;
 
+interface KVNamespace {
+    put(key: string, value: string): Promise<void>;
+}
+
+// Key written on first successful auth. index.astro checks for any keys
+// in PHOTO_STORE to decide whether the card has been claimed.
+const CLAIMED_KEY = "claimed";
+
 export const POST: APIRoute = async ({ request, session }) => {
     let body: { password?: string };
     try {
@@ -26,6 +34,13 @@ export const POST: APIRoute = async ({ request, session }) => {
     }
 
     await session?.set("authed", true);
+    // Mark the card claimed so future visitors don't see the Edit prompt,
+    // even if the owner signs out before saving anything. Best-effort —
+    // idempotent put, missing binding is a no-op.
+    const photoStore = (env as { PHOTO_STORE?: KVNamespace }).PHOTO_STORE;
+    if (photoStore) {
+        await photoStore.put(CLAIMED_KEY, "1");
+    }
     return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json; charset=utf-8" },

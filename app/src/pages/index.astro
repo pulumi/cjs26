@@ -5,8 +5,22 @@
 export const prerender = false;
 
 import Layout from "../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+
+interface KVNamespace {
+    list(options?: { limit?: number }): Promise<{ keys: { name: string }[] }>;
+}
 
 const authed = (await Astro.session?.get<boolean>("authed")) === true;
+// "Claimed" = anything exists in PHOTO_STORE. A first successful POST to
+// /api/auth writes a `claimed` marker key there, so we treat the card as
+// owned the moment the owner signs in (even before they save a photo).
+// Subsequent saves (photo, OG, settings) also count. A fresh deploy has
+// an empty store, so a new owner sees the Edit prompt to sign in.
+const photoStore = (env as { PHOTO_STORE?: KVNamespace }).PHOTO_STORE;
+const claimed = photoStore
+    ? (await photoStore.list({ limit: 1 })).keys.length > 0
+    : false;
 // True under `astro dev`, false in the production build. Vite injects it.
 const isDev = import.meta.env.DEV;
 // The exact command the owner runs to read the production password.
@@ -17,9 +31,9 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
     <header class="page-header">
         <span class="page-title">Pulumi cloud watching club ID card</span>
         {
-            authed && (
+            (authed || !claimed) && (
                 <button id="auth-toggle" type="button" class="btn btn-outline">
-                    Sign Out
+                    {authed ? "Sign Out" : "Edit"}
                 </button>
             )
         }
