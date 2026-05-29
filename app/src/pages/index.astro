@@ -671,6 +671,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         let cachedSourceCanvas: HTMLCanvasElement | null = null;
         let stream: MediaStream | null = null;
         let rafId: number | null = null;
+        let liveStyleApplied = false;
 
         // Auto-size the ASCII font to fill the photo cell. Pick the largest
         // font where the GRID_W × GRID_H grid fits in both axes of the cell.
@@ -683,14 +684,21 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             const size = Math.max(1, Math.min(sizeByW, sizeByH));
             asciiDisplay.style.fontSize = `${size}px`;
             asciiDisplay.style.lineHeight = `${size * 0.6}px`;
-            // If the cell is wider than the rendered grid, stretch the pre
-            // horizontally to fill the width — eliminates side letterboxing
-            // without changing the font-size (transforms don't reflow).
-            const renderedW = size * GRID_W * 0.6;
-            const scaleX = renderedW > 0 ? cellW / renderedW : 1;
             asciiDisplay.style.transformOrigin = "center center";
-            asciiDisplay.style.transform =
-                scaleX > 1.001 ? `scaleX(${scaleX})` : "none";
+            // Measure the actual rendered pre and scale it to fill the cell
+            // on both axes. The 0.6 char-width / line-height heuristic above
+            // is approximate (and notably off for Safari's rendering of
+            // Monaspace Neon), so we don't trust it for the stretch — we
+            // observe the real box. getBoundingClientRect forces layout, so
+            // measurement is up-to-date with the font + content we just set.
+            asciiDisplay.style.transform = "none";
+            if (!asciiDisplay.hidden && asciiDisplay.textContent) {
+                const r = asciiDisplay.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    asciiDisplay.style.transform =
+                        `scale(${cellW / r.width}, ${cellH / r.height})`;
+                }
+            }
         }
 
         function renderPhotoFromCache() {
@@ -703,6 +711,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 GRID_H,
             );
             asciiDisplay.hidden = false;
+            applyDisplayStyle();
         }
 
         function renderLiveFrame() {
@@ -715,6 +724,13 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 GRID_H,
             );
             asciiDisplay.hidden = false;
+            // The pre's dimensions don't change frame-to-frame (grid is
+            // fixed), so we only need to re-fit once after content first
+            // appears. ResizeObserver covers cell-size changes.
+            if (!liveStyleApplied) {
+                liveStyleApplied = true;
+                applyDisplayStyle();
+            }
         }
 
         function liveLoop() {
@@ -922,6 +938,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         function closeCam() {
             if (rafId !== null) cancelAnimationFrame(rafId);
             rafId = null;
+            liveStyleApplied = false;
             stream?.getTracks().forEach((t) => t.stop());
             stream = null;
             video.srcObject = null;
