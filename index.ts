@@ -10,7 +10,7 @@ execSync("npm run build --workspace=app", { stdio: "inherit" });
 
 const config = new pulumi.Config();
 const accountId = config.require("accountID");
-const subdomain = config.require("subdomain");
+const subdomain = config.require("subdomain").replace(".workers.dev", "");
 const workerName = config.get("workerName") || "cjs26";
 
 // Read in the app assets and generated Wrangler config.
