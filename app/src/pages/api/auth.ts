@@ -14,7 +14,15 @@ interface KVNamespace {
 // in PHOTO_STORE to decide whether the card has been claimed.
 const CLAIMED_KEY = "claimed";
 
-export const POST: APIRoute = async ({ request, session }) => {
+// Persistent, origin-scoped marker that this browser has edited *this* card.
+// Unlike the session flag, it survives sign-out, so the owner keeps seeing the
+// Edit button after logging out. Cookies are per-origin, so it never leaks to
+// other deployments' cards. index.astro reads it to decide whether to surface
+// the button to a signed-out visitor.
+const EDITOR_COOKIE = "card_editor";
+const EDITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // ~1 year
+
+export const POST: APIRoute = async ({ request, session, cookies }) => {
     let body: { password?: string };
     try {
         body = (await request.json()) as { password?: string };
@@ -46,6 +54,14 @@ export const POST: APIRoute = async ({ request, session }) => {
     if (photoStore) {
         await photoStore.put(CLAIMED_KEY, "1");
     }
+    // Remember this browser as an editor of this card (see EDITOR_COOKIE).
+    cookies.set(EDITOR_COOKIE, "1", {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: !import.meta.env.DEV,
+        maxAge: EDITOR_COOKIE_MAX_AGE,
+    });
     return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json; charset=utf-8" },

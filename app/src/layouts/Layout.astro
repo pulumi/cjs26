@@ -4,10 +4,8 @@ interface Props {
     tagline?: string;
 }
 const { title, tagline } = Astro.props;
-const fullTitle = `${title} · Astro + Cloudflare + Pulumi`;
-const description =
-    tagline ??
-    "A hybrid Astro app on Cloudflare Workers, deployed with Pulumi.";
+const fullTitle = `${title} · Pulumi Cloud Watching Club`;
+const description = tagline ?? "Join the Pulumi Cloud Watching Club.";
 // Absolute URL so crawlers (Slack, Twitter/X, etc.) can fetch it directly.
 const ogImage = new URL("/api/og.png", Astro.url).href;
 ---
@@ -24,7 +22,6 @@ const ogImage = new URL("/api/og.png", Astro.url).href;
             crossorigin
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="generator" content={Astro.generator} />
         <title>{fullTitle}</title>
         <meta name="description" content={description} />
         <meta property="og:title" content={fullTitle} />

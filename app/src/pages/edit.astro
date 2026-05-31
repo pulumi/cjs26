@@ -1,0 +1,9 @@
+---
+// Backdoor route for the owner: /edit renders the landing page with the auth
+// form revealed (see the pathname check in index.astro's client script).
+// Rewriting to "/" reuses the index route exactly, so there's no duplicated
+// markup — the URL stays /edit while the response body is the index page.
+export const prerender = false;
+
+return Astro.rewrite("/");
+---
