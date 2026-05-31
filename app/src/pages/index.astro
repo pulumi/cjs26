@@ -12,6 +12,10 @@ interface KVNamespace {
 }
 
 const authed = (await Astro.session?.get<boolean>("authed")) === true;
+// Set in /api/auth on successful login. Origin-scoped + outlives the session,
+// so a signed-out owner of *this* card still sees the Edit button, while true
+// anonymous visitors (and owners of other deployments) don't.
+const hasEditedBefore = Astro.cookies.get("card_editor")?.value === "1";
 // "Claimed" = anything exists in PHOTO_STORE. A first successful POST to
 // /api/auth writes a `claimed` marker key there, so we treat the card as
 // owned the moment the owner signs in (even before they save a photo).
@@ -31,7 +35,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
     <header class="page-header">
         <span class="page-title">Pulumi cloud watching club ID card</span>
         {
-            (authed || !claimed) && (
+            (authed || !claimed || hasEditedBefore) && (
                 <button id="auth-toggle" type="button" class="btn btn-outline">
                     {authed ? "Log Out" : "Edit"}
                 </button>
@@ -114,9 +118,11 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
     <div class="card-footer">
         {
             authed ? (
+
                 <a href="https://www.pulumi.com/cjs26" target="_blank" class="laptop-password">
-                    Forest laptop password: W4TCHTHECL0UDS
+                    Forest laptop password:
                 </a>
+                <span>W4TCHTHECL0UDS</span>
             ) : (
                 <span />
             )
@@ -186,11 +192,12 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
     </section>
 
     <p class="page-footer">
-        Adapted from <a href="https://github.com/mwpryer/ascii-ify" target="_blank"
+        Built with <a href="https://astro.build">Astro</a> and <a href="https://github.com/mwpryer/ascii-ify" target="_blank"
             >ASCII-ify</a
-        > and deployed to Cloudflare with <a href="https://www.pulumi.com" target="_blank"
+        > and deployed with <a href="https://www.pulumi.com" target="_blank"
             >Pulumi</a
         >.
+        [<a href="https://github.com/pulumi/cjs26" target="_blank">Source on GitHub</a>]
     </p>
 
     <!-- Hidden machinery -->
@@ -420,13 +427,12 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         }
         .laptop-password {
             font-size: 1rem;
-            text-decoration:none;
-        }
-        .laptop-password:hover {
             text-decoration:underline;
         }
         .card-footer-actions {
             display: flex;
+            flex: 1;
+            justify-content: flex-end;
             gap: 1rem;
         }
         .message-block {
@@ -776,6 +782,38 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             expValue.textContent = settings.exp || expTenYearsOut();
         }
 
+        // Personalize the document <title> once the card is both named and has
+        // a saved photo. Public visitors get the same personalized title after
+        // the photo fetch resolves; it falls back to the default title while
+        // the name is still the placeholder or no photo has been saved yet.
+        const DEFAULT_NAME = "Cloud Watcher";
+        const DEFAULT_TITLE = "Member ID Card";
+        // Mirrors the `· Pulumi Cloud Watching Club` suffix in Layout.astro.
+        const TITLE_SUFFIX = " · Pulumi Cloud Watching Club";
+
+        function updatePageTitle() {
+            const name = (settings.name || "").trim();
+            const personalized =
+                mode === "photo" && name !== "" && name !== DEFAULT_NAME;
+            const title = personalized
+                ? `${name}, Official Member`
+                : DEFAULT_TITLE;
+            document.title = title + TITLE_SUFFIX;
+        }
+
+        // Focus the (editable) Name field and select its text so the owner can
+        // type over the placeholder. No-op when the name isn't editable.
+        function focusNameField() {
+            if (nameValue.getAttribute("contenteditable") !== "plaintext-only")
+                return;
+            nameValue.focus();
+            const range = document.createRange();
+            range.selectNodeContents(nameValue);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+
         // --- Load saved photo on first paint -----------------------------------
         async function loadPhoto(): Promise<void> {
             const res = await fetch("/api/photo", { cache: "no-store" });
@@ -795,6 +833,12 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             applyDisplayStyle();
             await loadServerSettings();
             applyNameAndExpToUI();
+            // Right after login the page reloads with this flag set — focus the
+            // Name field so the owner can name their card immediately.
+            if (authed && sessionStorage.getItem("focus-name") === "1") {
+                sessionStorage.removeItem("focus-name");
+                focusNameField();
+            }
             await loadPhoto();
             // If settings came back from KV after loadPhoto, re-render to apply
             // any color/chars change in case future tuning is reintroduced.
@@ -802,6 +846,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 applyDisplayStyle();
                 renderPhotoFromCache();
             }
+            updatePageTitle();
         }
         init();
 
@@ -837,6 +882,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 nameValue.textContent = settings.name;
                 settings.exp = expTenYearsOut();
                 expValue.textContent = settings.exp;
+                updatePageTitle();
                 try {
                     await postSettings();
                     // Refresh the share card so the new name flows through
@@ -878,9 +924,10 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             if (authSection) authSection.hidden = true;
         });
 
-        // Backdoor URL for the owner: ?edit=1 reveals the auth form even
-        // though the Edit button is hidden from public viewers.
-        if (!authed && new URLSearchParams(location.search).get("edit") === "1" && authSection) {
+        // Backdoor URL for the owner: /edit renders this page with the auth
+        // form revealed, even though the Edit button is hidden from public
+        // viewers. (The /edit route rewrites to "/", so the markup is shared.)
+        if (!authed && location.pathname.replace(/\/$/, "") === "/edit" && authSection) {
             authSection.hidden = false;
             authSection.scrollIntoView({ behavior: "smooth", block: "start" });
             (document.getElementById("password") as HTMLInputElement)?.focus();
@@ -903,6 +950,9 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 body: JSON.stringify({ password }),
             });
             if (res.ok) {
+                // One-shot flag so the reloaded page focuses the Name field,
+                // letting the owner edit their name straight after logging in.
+                sessionStorage.setItem("focus-name", "1");
                 location.href = "/";
             } else if (authError) {
                 authError.textContent = "Wrong password.";
@@ -1070,6 +1120,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 renderPhotoFromCache();
                 settings.exp = expTenYearsOut();
                 expValue.textContent = settings.exp;
+                updatePageTitle();
 
                 let ogOk = true;
                 let ogErr: Error | null = null;

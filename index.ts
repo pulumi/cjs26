@@ -92,7 +92,7 @@ new cloudflare.WorkersDeployment("deployment", {
     versions: [{ percentage: 100, versionId: version.id }],
 });
 
-// Export the stable production URL.
+// Export the stable URL.
 export const url = `https://${workerName}.${subdomain}.workers.dev`;
 
 // Export the generated passkey.
