@@ -73,13 +73,21 @@ A [Pulumi](https://pulumi.com) [template](https://www.pulumi.com/blog/how-to-cre
         + 7 created
     ```
 
-When the deployment completes, follow the link to your deployed site. There, Click Edit, and you'll be asked for your stack's computed passkey. You can get as a Pulumi [stack output](https://www.pulumi.com/docs/iac/concepts/inputs-outputs/):
+When the deployment completes, follow the link to your deployed site. There, Click Edit, and you'll be asked for your stack's computed passkey, which you can read as a Pulumi [stack output](https://www.pulumi.com/docs/iac/concepts/inputs-outputs/):
 
 ```bash
 pulumi stack output passkey --show-secrets
 ```
 
-Click Log In, and off you go. (Click Log Out in the header to end your session.)
+Click Log In, and off you go — edit your name, add a photo, save, and share the URL, or download a copy of your records:
+
+<img width="60%" alt="Membership card" src="https://github.com/user-attachments/assets/201c5f4d-8d17-4c1b-abf0-a7708d1601ce" />
+
+Click Log Out to end your session. To edit again, visit `/edit` and sign in. When you're finished, tear everything down with `pulumi destroy`:
+
+```bash
+pulumi destroy
+```
 
 ## What's under the hood
 
