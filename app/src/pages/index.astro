@@ -9,6 +9,7 @@ import { env } from "cloudflare:workers";
 
 interface KVNamespace {
     list(options?: { limit?: number }): Promise<{ keys: { name: string }[] }>;
+    get(key: string): Promise<string | null>;
 }
 
 const authed = (await Astro.session?.get<boolean>("authed")) === true;
@@ -22,16 +23,36 @@ const hasEditedBefore = Astro.cookies.get("card_editor")?.value === "1";
 // Subsequent saves (photo, OG, settings) also count. A fresh deploy has
 // an empty store, so a new owner sees the Edit prompt to sign in.
 const photoStore = (env as { PHOTO_STORE?: KVNamespace }).PHOTO_STORE;
-const claimed = photoStore
-    ? (await photoStore.list({ limit: 1 })).keys.length > 0
-    : false;
+const storeKeys = photoStore
+    ? (await photoStore.list()).keys.map((k) => k.name)
+    : [];
+const claimed = storeKeys.length > 0;
+
+// Render the personalized document <title> server-side too, so crawlers and
+// social-media link previews (which read the initial HTML, not post-load JS)
+// see it. Mirrors the client-side updatePageTitle(): personalized only once a
+// photo is saved AND the name differs from the placeholder. The client still
+// updates it live after a save, but the first paint already carries the right
+// value. KV is eventually consistent, so this can briefly lag a fresh save —
+// acceptable for a share-preview title.
+const DEFAULT_NAME = "Cloud Watcher";
+let pageTitle = "Member ID Card";
+if (photoStore && storeKeys.includes("current")) {
+    const raw = await photoStore.get("current.settings");
+    if (raw) {
+        try {
+            const name = ((JSON.parse(raw) as { name?: string }).name ?? "").trim();
+            if (name && name !== DEFAULT_NAME) pageTitle = `${name}, Official Member`;
+        } catch {}
+    }
+}
 // True under `astro dev`, false in the production build. Vite injects it.
 const isDev = import.meta.env.DEV;
 // The exact command the owner runs to read the production password.
 const pulumiCmd = "pulumi stack output passkey --show-secrets";
 ---
 
-<Layout title="Pulumi Cloud Watching Club ID Card">
+<Layout title={pageTitle}>
     <header class="page-header">
         <span class="page-title">Pulumi cloud watching club ID card</span>
         {

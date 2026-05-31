@@ -5,7 +5,8 @@ interface Props {
 }
 const { title, tagline } = Astro.props;
 const fullTitle = `${title} · Pulumi Cloud Watching Club`;
-const description = tagline ?? "Join the Pulumi Cloud Watching Club.";
+const description =
+    tagline ?? "Build and deploy a card of your own at pulumi.com/cjs26.";
 // Absolute URL so crawlers (Slack, Twitter/X, etc.) can fetch it directly.
 const ogImage = new URL("/api/og.png", Astro.url).href;
 ---
