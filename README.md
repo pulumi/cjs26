@@ -83,7 +83,9 @@ Click Log In, and off you go — edit your name, add a photo, save, and share t
 
 <img width="60%" alt="Membership card" src="https://github.com/user-attachments/assets/201c5f4d-8d17-4c1b-abf0-a7708d1601ce" />
 
-Click Log Out to end your session. To edit again, visit `/edit` and sign in. When you're finished, tear everything down with `pulumi destroy`:
+Click Log Out to end your session. To edit again, click Edit (or visit `/edit`) and sign in. You can also make changes to the app and redeploy anytime with another `pulumi up`.
+
+When you're finished, tear everything down with `pulumi destroy`:
 
 ```bash
 pulumi destroy
