@@ -9,4 +9,6 @@ template:
     subdomain:
       description: Your Cloudflare subdomain. See https://dash.cloudflare.com → Compute → Workers & Pages → Subdomain.
     cloudflare:apiToken:
-      description: Your API token. See https://dash.cloudflare.com → Manage Account → API Tokens. You need Workers KV (Edit) and Workers Scripts (Edit).
+      description: |
+        Your API token. See https://dash.cloudflare.com → Manage Account → API Tokens. 
+        RequiresWorkers KV (Edit) and Workers Scripts (Edit). Omit to use $CLOUDFLARE_API_TOKEN.
