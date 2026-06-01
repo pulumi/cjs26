@@ -453,13 +453,8 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         .card-footer-actions {
             display: flex;
             flex: 1;
+            justify-content: flex-end;
             gap: 1rem;
-        }
-        /* Split the row evenly instead of hugging the right edge. flex-basis 0
-           + equal grow makes the two buttons 50/50 (min-content keeps the
-           longer label from overflowing when the row gets tight). */
-        .card-footer-actions .btn {
-            flex: 1 1 0;
         }
         .message-block {
             border: 1px solid var(--color-violet-400);
@@ -562,6 +557,14 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
             }
             .photo-cell {
                 aspect-ratio: 1.6;
+            }
+            /* On mobile only, fill the footer row 50/50. flex-basis 0 + equal
+               grow makes the two buttons even (min-content keeps the longer
+               label from overflowing when the row gets tight). At iPad/desktop
+               widths the buttons keep their natural size and stay right-aligned
+               (see .card-footer-actions above). */
+            .card-footer-actions .btn {
+                flex: 1 1 0;
             }
         }
 
