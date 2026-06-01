@@ -144,9 +144,7 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                     Forest laptop password:
                 </a>
                 <span>W4TCHTHECL0UDS</span>
-            ) : (
-                <span />
-            )
+            ) : null
         }
         <div class="card-footer-actions">
             <button id="download" type="button" class="btn btn-outline"
@@ -307,9 +305,10 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         .card-left {
             border-right: 2px solid var(--color-violet-400);
             display: flex;
+            gap: 16px;
             align-items: center;
             justify-content: center;
-            padding: 1.25rem;
+            padding: 8px 42px;
             background-image: url("/wave-bg.svg");
             background-size: cover;
             background-position: center;
@@ -454,8 +453,13 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
         .card-footer-actions {
             display: flex;
             flex: 1;
-            justify-content: flex-end;
             gap: 1rem;
+        }
+        /* Split the row evenly instead of hugging the right edge. flex-basis 0
+           + equal grow makes the two buttons 50/50 (min-content keeps the
+           longer label from overflowing when the row gets tight). */
+        .card-footer-actions .btn {
+            flex: 1 1 0;
         }
         .message-block {
             border: 1px solid var(--color-violet-400);
@@ -544,7 +548,23 @@ const pulumiCmd = "pulumi stack output passkey --show-secrets";
                 border-bottom: 2px solid var(--color-violet-400);
                 aspect-ratio: 1 / 1;
             }
+            /* With the card stacked and its aspect-ratio dropped, the photo
+               cell (flex: 1) would otherwise collapse to a sliver and the
+               ASCII would stretch to fill it — squishing the image vertically.
+               WebKit ignores `aspect-ratio` on a *flex item* in a column
+               container, so drop card-right out of flex on mobile: the cell
+               becomes a normal block and its aspect-ratio is honored. 1.6 sits
+               in the two-column desktop cell's range (≈1.53 at the 896px max
+               width, ≈1.73 near the breakpoint), so the face reads the same as
+               on desktop rather than stretched wide. */
+            .card-right {
+                display: block;
+            }
+            .photo-cell {
+                aspect-ratio: 1.6;
+            }
         }
+
     </style>
 
     <script>
