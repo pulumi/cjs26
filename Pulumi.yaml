@@ -7,7 +7,7 @@ template:
     accountID:
       description: Your Cloudflare account ID. See https://dash.cloudflare.com → Compute → Workers & Pages → Account details.
     subdomain:
-      description: Your Cloudflare subdomain. See https://dash.cloudflare.com → Compute → Workers & Pages → Subdomain.
+      description: Your Cloudflare subdomain. See https://dash.cloudflare.com → Compute → Workers & Pages → Account details.
     cloudflare:apiToken:
       description: |
-        Your Cloudflare API token. See https://dash.cloudflare.com → Manage Account → API Tokens. Requires Workers KV (Edit) and Workers Scripts (Edit). Omit to fall back to $CLOUDFLARE_API_TOKEN instead.
+        Your Cloudflare API token. See Manage Account → API Tokens. Requires Workers KV and Workers Scripts (Edit). Skip to read $CLOUDFLARE_API_TOKEN instead.
