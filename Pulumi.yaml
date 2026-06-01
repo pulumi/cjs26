@@ -10,4 +10,4 @@ template:
       description: Your Cloudflare subdomain. See https://dash.cloudflare.com → Compute → Workers & Pages → Subdomain.
     cloudflare:apiToken:
       description: |
-        Your Cloudflare API token, saved as an enrypted Pulumi secret. See https://dash.cloudflare.com → Manage Account → API Tokens. Requires only Workers KV (Edit) and Workers Scripts (Edit) permissions. Omit this setting to read $CLOUDFLARE_API_TOKEN from your environment instead.
+        Your Cloudflare API token. See https://dash.cloudflare.com → Manage Account → API Tokens. Requires Workers KV (Edit) and Workers Scripts (Edit). Omit to fall back to $CLOUDFLARE_API_TOKEN instead.
